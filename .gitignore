@@ -1,0 +1,21 @@
+# Archivos que genera TASM / TLINK al compilar (se vuelven a crear con BUILD.bat)
+*.obj
+*.map
+*.exe
+!bin/*.exe
+
+# Turbo Debugger
+*.tr
+*.tr2
+TDCONFIG.TD
+
+# Respaldos y archivos temporales
+*.bak
+*.tmp
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
