@@ -10,66 +10,66 @@
 PALETTE_START   EQU 16
 PALETTE_COUNT   EQU 60
 SpritePalette   LABEL BYTE
-                db 54,45, 4        ; color 16
-                db 46,29, 2        ; color 17
-                db 46,16, 2        ; color 18
-                db 13, 8, 6        ; color 19
-                db 48,37,12        ; color 20
-                db 20,11, 8        ; color 21
-                db 16,12,10        ; color 22
-                db 41,41,38        ; color 23
-                db 18,27,18        ; color 24
-                db 58,44,34        ; color 25
-                db 50,34,24        ; color 26
-                db 14, 7, 8        ; color 27
-                db 39,22,20        ; color 28
-                db 42,30,28        ; color 29
-                db 36,32,32        ; color 30
-                db 63,63,63        ; color 31
-                db  8, 1, 0        ; color 32
-                db 52,15,15        ; color 33
-                db 14,13,13        ; color 34
-                db 22,28,17        ; color 35
-                db 54,20, 5        ; color 36
-                db 57,41,38        ; color 37
-                db 39,33,30        ; color 38
-                db 19,13,10        ; color 39
-                db 49, 8,12        ; color 40
-                db 39,12, 0        ; color 41
-                db 60,57,56        ; color 42
-                db 61,52,15        ; color 43
-                db 40,25,62        ; color 44
-                db 24, 8,29        ; color 45
-                db 49,45,56        ; color 46
-                db 58,53, 0        ; color 47
-                db 54, 7, 7        ; color 48
-                db 55,53,53        ; color 49
-                db  0, 0, 0        ; color 50
-                db 63,61,33        ; color 51
-                db 24,37,63        ; color 52
-                db 27,26,26        ; color 53
-                db 48,42,14        ; color 54
-                db 41,35, 4        ; color 55
-                db 25,24,23        ; color 56
-                db 44,43,41        ; color 57
-                db 23,19,11        ; color 58
-                db  4, 3,59        ; color 59
-                db 63, 0, 0        ; color 60
-                db 63,26,21        ; color 61
-                db  4, 5, 5        ; color 62
-                db 45,15, 4        ; color 63
-                db  5,51,51        ; color 64
-                db  2,43,51        ; color 65
-                db 48, 5,40        ; color 66
-                db 38, 4,32        ; color 67
-                db 51,50, 5        ; color 68
-                db  2,22,47        ; color 69
-                db 48,46,45        ; color 70
-                db 57,55,54        ; color 71
-                db 21,21,21        ; color 72
-                db 50,20,10        ; color 73
-                db 12,13,13        ; color 74
-                db 13,21,16        ; color 75
+                db 54,45, 4        ; color 16  #DAB80F  amarillo
+                db 46,29, 2        ; color 17  #BC7607  cafe
+                db 46,16, 2        ; color 18  #BC3F07  cafe
+                db 13, 8, 6        ; color 19  #332017  cafe oscuro
+                db 48,37,12        ; color 20  #C39730  naranja
+                db 20,11, 8        ; color 21  #4F2E1F  cafe oscuro
+                db 16,12,10        ; color 22  #402F28  cafe oscuro
+                db 41,41,38        ; color 23  #A7A59A  gris
+                db 18,27,18        ; color 24  #4A6D48  verde
+                db 58,44,34        ; color 25  #E9B48A  naranja claro
+                db 50,34,24        ; color 26  #C98B62  naranja
+                db 14, 7, 8        ; color 27  #381E1F  rojo oscuro
+                db 39,22,20        ; color 28  #9C594F  rojo
+                db 42,30,28        ; color 29  #AA7971  rojo
+                db 36,32,32        ; color 30  #928283  gris
+                db 63,63,63        ; color 31  #FEFFFF  blanco
+                db  8, 1, 0        ; color 32  #220401  negro
+                db 52,15,15        ; color 33  #D13E3E  rojo
+                db 14,13,13        ; color 34  #393433  gris oscuro
+                db 22,28,17        ; color 35  #597244  verde
+                db 54,20, 5        ; color 36  #D95013  naranja
+                db 57,41,38        ; color 37  #E7A49A  rojo claro
+                db 39,33,30        ; color 38  #9C877B  naranja
+                db 19,13,10        ; color 39  #4C3528  cafe oscuro
+                db 49, 8,12        ; color 40  #C8202F  rojo
+                db 39,12, 0        ; color 41  #9C3000  cafe
+                db 60,57,56        ; color 42  #F2E8E4  blanco
+                db 61,52,15        ; color 43  #F6D33C  amarillo
+                db 40,25,62        ; color 44  #A265FB  morado
+                db 24, 8,29        ; color 45  #611F77  morado oscuro
+                db 49,45,56        ; color 46  #C7B6E3  morado claro
+                db 58,53, 0        ; color 47  #EAD800  amarillo
+                db 54, 7, 7        ; color 48  #D91D1C  rojo
+                db 55,53,53        ; color 49  #DDD5D5  gris claro
+                db  0, 0, 0        ; color 50  #000001  negro
+                db 63,61,33        ; color 51  #FFF685  amarillo claro
+                db 24,37,63        ; color 52  #6096FF  azul
+                db 27,26,26        ; color 53  #6D6A6A  gris
+                db 48,42,14        ; color 54  #C1AB38  amarillo
+                db 41,35, 4        ; color 55  #A58D12  amarillo
+                db 25,24,23        ; color 56  #64635F  gris
+                db 44,43,41        ; color 57  #B2B0A5  gris
+                db 23,19,11        ; color 58  #5C4D2B  cafe oscuro
+                db  4, 3,59        ; color 59  #100CEE  azul
+                db 63, 0, 0        ; color 60  #FF0000  rojo
+                db 63,26,21        ; color 61  #FF6B54  rojo
+                db  4, 5, 5        ; color 62  #121313  negro
+                db 45,15, 4        ; color 63  #B83E12  cafe
+                db  5,51,51        ; color 64  #13D0CE  celeste
+                db  2,43,51        ; color 65  #0AAECE  celeste
+                db 48, 5,40        ; color 66  #C315A2  rosado
+                db 38, 4,32        ; color 67  #9A1180  rosado
+                db 51,50, 5        ; color 68  #D0CA13  amarillo
+                db  2,22,47        ; color 69  #0958BE  azul
+                db 48,46,45        ; color 70  #C3BAB6  gris claro
+                db 57,55,54        ; color 71  #E7DDD9  gris claro
+                db 21,21,21        ; color 72  #545656  gris
+                db 50,20,10        ; color 73  #CA5229  naranja
+                db 12,13,13        ; color 74  #303434  gris oscuro
+                db 13,21,16        ; color 75  #345640  verde oscuro
 
 ; ---- Sprites ----
 ; 0 = transparente (DrawSprite no lo pinta).

@@ -18,6 +18,7 @@ sigue siendo 100 % ensamblador; este script es una herramienta aparte.
 """
 
 import base64
+import colorsys
 import io
 import json
 import os
@@ -66,6 +67,41 @@ def to_vga(rgb):
     return tuple(round(c * 63 / 255) for c in rgb)
 
 
+def color_name(rgb):
+    """Nombre aproximado del color en espanol (solo para el comentario)."""
+    h, l, s = colorsys.rgb_to_hls(*(c / 255 for c in rgb))
+    chroma = (max(rgb) - min(rgb)) / 255   # que tan "de color" es (0 = gris)
+    if l < 0.12:
+        return "negro"
+    if l > 0.9:
+        return "blanco"
+    if chroma < 0.08:
+        name = "gris"
+    else:
+        deg = h * 360
+        if deg < 15 or deg >= 345:
+            name = "rojo"
+        elif deg < 45:
+            name = "cafe" if l < 0.45 else "naranja"
+        elif deg < 70:
+            name = "cafe" if l < 0.3 else "amarillo"
+        elif deg < 165:
+            name = "verde"
+        elif deg < 200:
+            name = "celeste"
+        elif deg < 255:
+            name = "azul"
+        elif deg < 290:
+            name = "morado"
+        else:
+            name = "rosado"
+    if l > 0.7:
+        name += " claro"
+    elif l < 0.3:
+        name += " oscuro"
+    return name
+
+
 def label_for(file_name, frame, frame_count):
     """lapa.piskel -> SprLapa (o SprCafe0, SprCafe1 si tiene varios cuadros)."""
     base = os.path.splitext(file_name)[0]
@@ -91,6 +127,7 @@ def main():
 
     # 2. Armar la paleta comun
     palette = []  # lista de colores VGA (r, g, b)
+    original = []  # el mismo color en 0..255, tal como esta en Piskel
 
     def color_index(rgb):
         vga = to_vga(rgb)
@@ -98,6 +135,7 @@ def main():
             if max(abs(a - b) for a, b in zip(vga, known)) <= MERGE_TOLERANCE:
                 return PALETTE_START + i
         palette.append(vga)
+        original.append(rgb)
         return PALETTE_START + len(palette) - 1
 
     tables = []  # (etiqueta, archivo, ancho, alto, [indices])
@@ -130,7 +168,8 @@ def main():
         "SpritePalette   LABEL BYTE",
     ]
     for i, (r, g, b) in enumerate(palette):
-        lines.append(f"                db {r:2d},{g:2d},{b:2d}        ; color {PALETTE_START + i}")
+        hex_code = "#{:02X}{:02X}{:02X}".format(*original[i])
+        lines.append(f"                db {r:2d},{g:2d},{b:2d}        ; color {PALETTE_START + i}  {hex_code}  {color_name(original[i])}")
     lines += ["", "; ---- Sprites ----", "; 0 = transparente (DrawSprite no lo pinta)."]
 
     sizes = {(w, h) for _, _, w, h, _ in tables}
