@@ -466,3 +466,28 @@ up_end:
     POP_ALL
     ret
 UpdatePanelSloth ENDP
+
+; ----------------------------------------------------------
+; DrawStatus: borra la barra de abajo y escribe un mensaje
+;   Recibe: SI = mensaje terminado en 0 (maximo 38 letras), BL = color
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawStatus PROC
+    PUSH_ALL
+    push si
+    push bx
+    mov ax, BAR_X
+    mov bx, BAR_Y
+    mov cx, BAR_W
+    mov dx, BAR_H
+    mov si, 0
+    call FillRect
+    pop bx
+    pop si
+    mov dh, BAR_Y / 8 + 1
+    mov dl, 1               ; la ultima columna de la ultima fila hace subir la pantalla
+    call DrawText
+    POP_ALL
+    ret
+DrawStatus ENDP

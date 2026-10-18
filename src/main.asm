@@ -40,6 +40,9 @@ start:
     mov cl, 1               ; intento 1 de 12
     mov ch, 12
     call DrawPanel
+    mov si, OFFSET MsgHelp
+    mov bl, C_WHITE
+    call DrawStatus
 
 main_loop:
     call UpdateHeadSloth

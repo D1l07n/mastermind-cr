@@ -46,6 +46,7 @@ MsgSlash    DB '/', 0
 MsgTiempo   DB 'Tiempo', 0
 MsgTimeZero DB '00:00', 0
 MsgFichas   DB 'Fichas', 0
+MsgHelp     DB 'Flechas mover  1-8 ficha  ENTER probar', 0
 
 PieceSprites DW OFFSET SprAntorcha0, OFFSET SprBolinchas, OFFSET SprCafe0
              DW OFFSET SprCrema, OFFSET SprFarol, OFFSET SprGuante0
