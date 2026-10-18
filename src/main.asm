@@ -10,6 +10,7 @@ INCLUDE macros.inc
 
 .DATA
 INCLUDE sprites.inc
+INCLUDE uidata.inc
 OldVideoMode DB 0           ; modo de video que habia antes de arrancar
 PlayerX      DW 152         ; posicion del perezoso (prueba de la fase 4)
 PlayerY      DW 92
@@ -21,6 +22,7 @@ BLINK_TICKS  EQU 9          ; 9 tics = medio segundo
 .CODE
 INCLUDE graphics.inc
 INCLUDE input.inc
+INCLUDE screens.inc
 
 start:
     mov ax, @data
@@ -32,9 +34,14 @@ start:
 
     call GetTicks
     mov LastTick, ax
+    mov HeadTick, ax
     call DrawPlayer
 
+    mov al, 1               ; nivel 1
+    call DrawHeader
+
 main_loop:
+    call UpdateHeadSloth
     call GetTicks
     mov bx, ax              ; BX = tic de ahora
     sub ax, LastTick        ; AX = tics que pasaron
