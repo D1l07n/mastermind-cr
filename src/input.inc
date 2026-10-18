@@ -12,6 +12,7 @@ ACT_ENTER   EQU 5
 ACT_BACK    EQU 6           ; BACKSPACE
 ACT_ESC     EQU 7
 ACT_NUMBER  EQU 8           ; 1..8, el numero va en AH
+ACT_TEST    EQU 9           ; H: modo prueba
 
 ; ----------------------------------------------------------
 ; ReadAction: espera una tecla y la traduce a una accion
@@ -53,6 +54,8 @@ ra_letter:
     je ra_left
     cmp al, 'd'
     je ra_right
+    cmp al, 'h'
+    je ra_test
     jmp ra_none
 
 ra_arrow:
@@ -79,6 +82,8 @@ ra_enter: mov al, ACT_ENTER
 ra_back:  mov al, ACT_BACK
           ret
 ra_esc:   mov al, ACT_ESC
+          ret
+ra_test:  mov al, ACT_TEST
           ret
 ra_none:  mov al, ACT_NONE
           ret

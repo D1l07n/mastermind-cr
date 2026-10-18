@@ -51,6 +51,9 @@ MsgFaltan   DB 'Faltan fichas en la fila', 0
 MsgGano     DB 173, 'Ganaste! Pura vida   ESC salir', 0
 MsgPerdio   DB 'Perdiste, mira el secreto  ESC salir', 0
 MsgBlank2   DB '  ', 0
+MsgColon    DB ':', 0
+MsgPrueba   DB 'PRUEBA: pon el secreto y ENTER', 0
+MsgPruebaOk DB 'Secreto listo, ahora adivina', 0
 
 PieceSprites DW OFFSET SprAntorcha0, OFFSET SprBolinchas, OFFSET SprCafe0
              DW OFFSET SprCrema, OFFSET SprFarol, OFFSET SprGuante0
@@ -68,3 +71,6 @@ CurPos      DB 0                ; casilla elegida (0 = la primera)
 CursorOn    DB 0                ; 1 = marco amarillo visible
 CursorTick  DW 0                ; tic del ultimo parpadeo
 WarnOn      DB 0                ; 1 = la barra muestra un aviso
+TestMode    DB 0                ; 1 = se esta escribiendo el secreto a mano
+GameTick    DW 0                ; tic en que empezo la partida
+ShownSec    DW 0                ; segundo que muestra el reloj

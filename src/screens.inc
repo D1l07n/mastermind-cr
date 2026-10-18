@@ -769,3 +769,57 @@ sc_piece:
     POP_ALL
     ret
 DrawSecret ENDP
+
+; ----------------------------------------------------------
+; DrawTime: escribe el tiempo como MM:SS en el panel
+;   Recibe: AX = segundos
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawTime PROC
+    PUSH_ALL
+    mov dx, 0
+    mov bx, 60
+    div bx                  ; AX = minutos, DX = segundos
+    cmp ax, 99
+    jbe ti_ok
+    mov ax, 99              ; mas de 99 minutos: se queda en 99:59
+    mov dx, 59
+ti_ok:
+    mov cx, dx              ; CX = segundos
+    mov dh, PROW + 9
+    mov dl, PCOL + 7
+    mov bl, C_WHITE
+    call DrawTwoDigits
+    mov si, OFFSET MsgColon
+    mov dl, PCOL + 9
+    call DrawText
+    mov al, cl
+    mov dl, PCOL + 10
+    call DrawTwoDigits
+    POP_ALL
+    ret
+DrawTime ENDP
+
+; ----------------------------------------------------------
+; UpdateTimer: actualiza el reloj del panel si cambio el segundo
+;   Recibe: nada (usa GameTick y ShownSec)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+UpdateTimer PROC
+    PUSH_ALL
+    call GetTicks
+    sub ax, GameTick        ; AX = tics desde que empezo la partida
+    mov bx, 10
+    mul bx
+    mov bx, 182
+    div bx                  ; tics * 10 / 182 = segundos (18.2 tics por segundo)
+    cmp ax, ShownSec
+    je ut_end               ; mismo segundo: no redibujar
+    mov ShownSec, ax
+    call DrawTime
+ut_end:
+    POP_ALL
+    ret
+UpdateTimer ENDP

@@ -36,6 +36,7 @@ start:
     mov HeadTick, ax
     mov PanelTick, ax
     mov CursorTick, ax
+    mov GameTick, ax
     call DrawGameScreen
 
 main_loop:
@@ -44,6 +45,7 @@ main_loop:
     cmp GameState, 0
     jne ml_key              ; partida terminada: sin cursor
     call UpdateCursor
+    call UpdateTimer
 ml_key:
     call PollAction
     cmp al, ACT_NONE
@@ -51,7 +53,10 @@ ml_key:
     cmp al, ACT_ESC
     je exit_game            ; el menu llega en la fase 7
     cmp GameState, 0
-    jne main_loop           ; partida terminada: solo ESC
+    je ml_play
+    cmp al, ACT_TEST
+    jne main_loop           ; partida terminada: solo ESC o H
+ml_play:
     call GameKey
     jmp main_loop
 
@@ -69,6 +74,12 @@ exit_game:
 ; ----------------------------------------------------------
 DrawGameScreen PROC
     PUSH_ALL
+    mov ax, 0
+    mov bx, 0
+    mov cx, 320
+    mov dx, 200
+    mov si, 0
+    call FillRect           ; pantalla en negro
     mov al, Level
     inc al                  ; nivel 0..2 se muestra como 1..3
     call DrawHeader
@@ -106,6 +117,11 @@ GameKey PROC
     mov WarnOn, 0
     mov si, OFFSET MsgHelp
     mov bl, C_WHITE
+    cmp TestMode, 0
+    je gk_warn
+    mov si, OFFSET MsgPrueba    ; en modo prueba se queda su mensaje
+    mov bl, C_GOLD
+gk_warn:
     call DrawStatus         ; quitar el aviso de la barra
 gk_nowarn:
     mov CursorOn, 0
@@ -128,6 +144,8 @@ gk_nowarn:
     je gk_back
     cmp al, ACT_ENTER
     je gk_enter
+    cmp al, ACT_TEST
+    je gk_test
     jmp gk_done
 
 gk_left:
@@ -174,10 +192,56 @@ gk_back:
     mov ah, CurPos
     call DrawActiveSlot
     jmp gk_done
+gk_test:
+    cmp TryNum, 0
+    je gk_tstart
+    call NewGame            ; ya se jugo: empezar de cero
+    mov PanelMood, 0
+    call DrawGameScreen
+gk_tstart:
+    call GetTicks
+    mov GameTick, ax
+    mov TestMode, 1
+    mov WarnOn, 0
+    mov si, OFFSET MsgPrueba
+    mov bl, C_GOLD
+    call DrawStatus
+    jmp gk_done
 gk_enter:
+    cmp TestMode, 0
+    je gk_submit
+    mov cl, NumPos          ; modo prueba: la fila es el secreto
+    mov ch, 0
+    mov si, 0
+gk_tcheck:
+    cmp Guess[si], 0
+    je gk_missing
+    inc si
+    loop gk_tcheck
+    mov cl, NumPos
+    mov si, 0
+gk_tcopy:
+    mov al, Guess[si]
+    mov Secret[si], al
+    mov Guess[si], 0
+    inc si
+    loop gk_tcopy
+    mov TestMode, 0
+    call DrawSecret         ; en prueba el secreto se ve
+    mov al, ActiveRow
+    call DrawActiveRow
+    call GetTicks
+    mov GameTick, ax        ; el reloj empieza de nuevo
+    mov WarnOn, 1
+    mov si, OFFSET MsgPruebaOk
+    mov bl, C_GOLD
+    call DrawStatus
+    jmp gk_done
+gk_submit:
     call SubmitGuess
     cmp al, 0
     jne gk_scored
+gk_missing:
     mov WarnOn, 1
     mov si, OFFSET MsgFaltan
     mov bl, C_RED

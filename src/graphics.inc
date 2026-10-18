@@ -67,7 +67,7 @@ LoadPalette ENDP
 
 ; ----------------------------------------------------------
 ; DrawSprite: dibuja un sprite de cualquier tamano
-;   Recibe: SI = direccion del sprite (ej. OFFSET SprLapa0)
+;   Recibe: SI = direccion del sprite (ej. OFFSET SprCafe0)
 ;           AX = x, BX = y
 ;           CX = ancho, DX = alto
 ;   Devuelve: nada. Los puntos con color 0 no se pintan.
@@ -205,3 +205,31 @@ dn_units:
     POP_ALL
     ret
 DrawNumber ENDP
+
+; ----------------------------------------------------------
+; DrawTwoDigits: escribe un numero de 0 a 99 siempre con 2 cifras (07)
+;   Recibe: AL = numero, DH = fila, DL = columna, BL = color
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawTwoDigits PROC
+    PUSH_ALL
+    mov cl, al
+    mov ah, 02h
+    mov bh, 0
+    int 10h
+    mov al, cl
+    mov ah, 0
+    mov cl, 10
+    div cl                  ; AL = decenas, AH = unidades
+    mov ch, ah
+    add al, '0'
+    mov ah, 0Eh
+    int 10h
+    mov al, ch
+    add al, '0'
+    mov ah, 0Eh
+    int 10h
+    POP_ALL
+    ret
+DrawTwoDigits ENDP
