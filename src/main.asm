@@ -12,12 +12,6 @@ INCLUDE macros.inc
 INCLUDE sprites.inc
 INCLUDE uidata.inc
 OldVideoMode DB 0           ; modo de video que habia antes de arrancar
-PlayerX      DW 152         ; posicion del perezoso (prueba de la fase 4)
-PlayerY      DW 92
-PlayerFrame  DB 0           ; 0 = cara normal, 1 = guino
-LastTick     DW 0           ; tic del ultimo cambio de cara
-STEP         EQU 4          ; puntos que avanza por tecla
-BLINK_TICKS  EQU 9          ; 9 tics = medio segundo
 
 .CODE
 INCLUDE graphics.inc
@@ -33,100 +27,24 @@ start:
     call LoadPalette
 
     call GetTicks
-    mov LastTick, ax
     mov HeadTick, ax
-    call DrawPlayer
 
     mov al, 1               ; nivel 1
     call DrawHeader
+    mov cl, 12              ; nivel 1: 12 filas de 4 fichas
+    mov ch, 4
+    call DrawBoard
 
 main_loop:
     call UpdateHeadSloth
-    call GetTicks
-    mov bx, ax              ; BX = tic de ahora
-    sub ax, LastTick        ; AX = tics que pasaron
-    cmp ax, BLINK_TICKS
-    jb check_key            ; todavia no toca cambiar de cara
-    mov LastTick, bx
-    call ErasePlayer
-    xor PlayerFrame, 1      ; 0 -> 1, 1 -> 0
-    call DrawPlayer
-
-check_key:
     call PollAction
-    cmp al, ACT_NONE
-    je main_loop            ; nadie toco nada: otra vuelta
     cmp al, ACT_ESC
-    je exit_game
-
-    call ErasePlayer
-    cmp al, ACT_LEFT
-    je move_left
-    cmp al, ACT_RIGHT
-    je move_right
-    cmp al, ACT_UP
-    je move_up
-    cmp al, ACT_DOWN
-    je move_down
-    jmp moved               ; otra tecla: queda donde estaba
-
-move_left:
-    cmp PlayerX, 0
-    je moved                ; ya esta en el borde
-    sub PlayerX, STEP
-    jmp moved
-move_right:
-    cmp PlayerX, 320 - 16
-    je moved
-    add PlayerX, STEP
-    jmp moved
-move_up:
-    cmp PlayerY, 0
-    je moved
-    sub PlayerY, STEP
-    jmp moved
-move_down:
-    cmp PlayerY, 200 - 16
-    je moved
-    add PlayerY, STEP
-moved:
-    call DrawPlayer
-    jmp main_loop
+    jne main_loop           ; por ahora solo ESC hace algo
 
 exit_game:
     call RestoreVideoMode   ; dejar la pantalla como estaba
     mov ah, 4Ch
     mov al, 0
     int 21h
-
-; DrawPlayer: dibuja el perezoso en PlayerX, PlayerY con la cara PlayerFrame. Toca nada.
-DrawPlayer PROC
-    PUSH_ALL
-    mov si, OFFSET SprPerezoso0
-    cmp PlayerFrame, 0
-    je dp_draw
-    mov si, OFFSET SprPerezoso1
-dp_draw:
-    mov ax, PlayerX
-    mov bx, PlayerY
-    mov cx, SPRITE_W
-    mov dx, SPRITE_H
-    call DrawSprite
-    POP_ALL
-    ret
-DrawPlayer ENDP
-
-; ErasePlayer: pinta de negro el cuadro del perezoso. Toca nada.
-ErasePlayer PROC
-    PUSH_ALL
-    mov ax, PlayerX
-    mov bx, PlayerY
-    mov cx, SPRITE_W
-    mov dx, SPRITE_H
-    mov si, 0               ; negro
-    call FillRect
-    POP_ALL
-    ret
-ErasePlayer ENDP
 
 END start

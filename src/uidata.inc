@@ -38,6 +38,7 @@ MsgMaster   DB 'MASTERMIND', 0
 MsgTico     DB 'T', 0, 'I', 0, 'C', 0, 'O', 0
 TicoColors  DB C_BLUE, C_WHITE, C_RED, C_BLUE
 MsgNivel    DB 'Nivel ', 0
+BoardStripes DB C_BLUE, C_WHITE, C_RED, C_WHITE, C_BLUE
 
 HeadFrame   DB 0                ; 0 = perezoso normal, 1 = victoria
 HeadTick    DW 0                ; tic del ultimo cambio

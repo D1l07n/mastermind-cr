@@ -26,6 +26,14 @@ HSLOTH_Y    EQU 2
 HEAD_NORMAL_T  EQU 36       ; 36 tics = 2 segundos normal
 HEAD_VICTORY_T EQU 18       ; 18 tics = 1 segundo de victoria
 
+STRIPES     EQU 5           ; franjas de bandera a cada lado
+ROW_X       EQU BOARD_X + STRIPES
+ROW_W       EQU BOARD_W - 2 * STRIPES
+ROW_H       EQU 14          ; 168 / 12 filas
+HOLE_X      EQU BOARD_X + 12
+HOLE_SIZE   EQU 10
+SLOT_STEP   EQU 18          ; distancia entre fichas de una fila
+
 ; ----------------------------------------------------------
 ; DrawFrame: dibuja el contorno de un rectangulo (1 punto)
 ;   Recibe: AX = x, BX = y, CX = ancho, DX = alto, SI = color
@@ -155,3 +163,83 @@ us_end:
     POP_ALL
     ret
 UpdateHeadSloth ENDP
+
+; ----------------------------------------------------------
+; DrawBoard: dibuja el tablero vacio (madera, bandera y huecos)
+;   Recibe: CL = filas (10 o 12), CH = fichas por fila (4 o 5)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawBoard PROC
+    PUSH_ALL
+    push cx
+
+    mov ax, BOARD_X
+    mov bx, BOARD_Y
+    mov cx, BOARD_W
+    mov dx, BOARD_H
+    mov si, C_WOOD
+    call FillRect
+
+    mov di, OFFSET BoardStripes
+    mov ax, BOARD_X
+    mov cx, STRIPES
+bd_stripe:
+    push cx
+    mov bl, [di]
+    mov bh, 0
+    mov si, bx              ; SI = color de esta franja
+    mov bx, BOARD_Y
+    mov cx, 1
+    mov dx, BOARD_H
+    call FillRect           ; franja izquierda
+    push ax
+    neg ax
+    add ax, 2 * BOARD_X + BOARD_W - 1
+    call FillRect           ; la misma del lado derecho
+    pop ax
+    inc ax
+    inc di
+    pop cx
+    loop bd_stripe
+
+    pop cx
+    mov bx, BOARD_Y         ; BX = y de la fila
+    mov di, 0               ; DI = numero de fila
+bd_row:
+    push cx
+    test di, 1
+    jz bd_holes             ; fila par: madera clara
+    mov ax, ROW_X
+    mov cx, ROW_W
+    mov dx, ROW_H
+    mov si, C_WOOD_DK
+    call FillRect
+bd_holes:
+    pop cx
+    push cx
+    mov cl, ch
+    mov ch, 0               ; CX = fichas por fila
+    mov ax, HOLE_X
+    push bx
+    add bx, (ROW_H - HOLE_SIZE) / 2
+bd_hole:
+    push cx
+    mov cx, HOLE_SIZE
+    mov dx, HOLE_SIZE
+    mov si, C_HOLE
+    call FillRect
+    pop cx
+    add ax, SLOT_STEP
+    loop bd_hole
+    pop bx
+    pop cx
+    add bx, ROW_H
+    inc di
+    mov ax, di
+    cmp al, cl
+    jb bd_row
+
+    POP_ALL
+    ret
+DrawBoard ENDP
