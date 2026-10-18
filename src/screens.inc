@@ -34,6 +34,17 @@ HOLE_X      EQU BOARD_X + 12
 HOLE_SIZE   EQU 10
 SLOT_STEP   EQU 18          ; distancia entre fichas de una fila
 
+PCOL        EQU PANEL_X / 8 + 1     ; primera columna de texto del panel
+PROW        EQU PANEL_Y / 8         ; primera fila de texto del panel
+PSLOTH_X    EQU PANEL_X + PANEL_W - 22
+PSLOTH_Y    EQU PANEL_Y + 6
+SECRET_X    EQU 8 * (PCOL + 2) - 3  ; cajita del primer "?"
+SECRET_Y    EQU 8 * (PROW + 4) - 3
+PIECE_X     EQU 8 * (PCOL + 1) - 4  ; primera ficha del panel
+PIECE_Y     EQU 8 * (PROW + 16) - 20
+PANEL_OPEN_T  EQU 54        ; 54 tics = 3 segundos con los ojos abiertos
+PANEL_WINK_T  EQU 9         ; 9 tics = medio segundo de guino
+
 ; ----------------------------------------------------------
 ; DrawFrame: dibuja el contorno de un rectangulo (1 punto)
 ;   Recibe: AX = x, BX = y, CX = ancho, DX = alto, SI = color
@@ -243,3 +254,215 @@ bd_hole:
     POP_ALL
     ret
 DrawBoard ENDP
+
+; ----------------------------------------------------------
+; DrawPanelSloth: dibuja el perezoso del panel
+;   Recibe: AL = cara (0 = normal, 1 = feliz, 2 = triste, 3 = guino)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawPanelSloth PROC
+    PUSH_ALL
+    mov bl, al
+    mov bh, 0
+    shl bx, 1               ; cada direccion de la tabla mide 2 bytes
+    push bx
+    mov ax, PSLOTH_X
+    mov bx, PSLOTH_Y
+    mov cx, SPRITE_W
+    mov dx, SPRITE_H
+    mov si, 0
+    call FillRect           ; borrar la cara anterior
+    pop si
+    mov si, PanelSloths[si]
+    call DrawSprite
+    POP_ALL
+    ret
+DrawPanelSloth ENDP
+
+; ----------------------------------------------------------
+; DrawPieceSlot: dibuja una ficha sobre su cuadrito gris
+;   Recibe: AX = x, BX = y, SI = direccion del sprite
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawPieceSlot PROC
+    PUSH_ALL
+    push si
+    sub ax, 2
+    sub bx, 2
+    mov cx, SPRITE_W + 4
+    mov dx, SPRITE_H + 4
+    mov si, C_SLOT
+    call FillRect
+    add ax, 2
+    add bx, 2
+    pop si
+    mov cx, SPRITE_W
+    mov dx, SPRITE_H
+    call DrawSprite
+    POP_ALL
+    ret
+DrawPieceSlot ENDP
+
+; ----------------------------------------------------------
+; DrawPanel: dibuja el panel lateral completo
+;   Recibe: AL = tipos de ficha (6 u 8), AH = fichas por intento (4 o 5)
+;           CL = intento actual, CH = intentos maximos
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawPanel PROC
+    PUSH_ALL
+    push cx
+    push ax
+
+    mov ax, PANEL_X
+    mov bx, PANEL_Y
+    mov cx, PANEL_W
+    mov dx, PANEL_H
+    mov si, C_BORDER
+    call DrawFrame
+    mov al, 0
+    call DrawPanelSloth
+
+    mov si, OFFSET MsgSecreto
+    mov dh, PROW + 2
+    mov dl, PCOL
+    mov bl, C_GOLD
+    call DrawText
+    pop ax
+    push ax
+    mov cl, ah
+    mov ch, 0               ; CX = cuantos "?"
+    mov ax, SECRET_X
+    mov dh, PROW + 4
+    mov dl, PCOL + 2
+dp_secret:
+    push cx
+    push dx
+    mov bx, SECRET_Y
+    mov cx, 14
+    mov dx, 14
+    mov si, C_BORDER
+    call DrawFrame
+    pop dx
+    mov si, OFFSET MsgQuestion
+    mov bl, C_GOLD
+    call DrawText
+    add ax, 16
+    add dl, 2
+    pop cx
+    loop dp_secret
+
+    mov si, OFFSET MsgIntento
+    mov dh, PROW + 7
+    mov dl, PCOL
+    mov bl, C_GOLD
+    call DrawText
+    pop ax
+    pop cx
+    push ax
+    mov al, cl
+    mov dl, PCOL + 8
+    cmp al, 10
+    jae dp_try
+    inc dl                  ; un solo digito: correrlo para que pegue al "/"
+dp_try:
+    mov bl, C_WHITE
+    call DrawNumber
+    mov si, OFFSET MsgSlash
+    mov dl, PCOL + 10
+    call DrawText
+    mov al, ch
+    mov dl, PCOL + 11
+    call DrawNumber
+
+    mov si, OFFSET MsgTiempo
+    mov dh, PROW + 9
+    mov dl, PCOL
+    mov bl, C_GOLD
+    call DrawText
+    mov si, OFFSET MsgTimeZero
+    mov dl, PCOL + 7
+    mov bl, C_WHITE
+    call DrawText
+
+    mov si, OFFSET MsgFichas
+    mov dh, PROW + 12
+    mov dl, PCOL
+    mov bl, C_GOLD
+    call DrawText
+
+    pop ax
+    mov cl, al
+    mov ch, 0               ; CX = tipos de ficha
+    mov di, OFFSET PieceSprites
+    mov ax, PIECE_X
+    mov bx, PIECE_Y
+    mov dh, PROW + 16
+    mov dl, PCOL + 1
+dp_piece:
+    push cx
+    mov si, [di]
+    call DrawPieceSlot
+    push ax
+    push bx
+    mov ax, di
+    sub ax, OFFSET PieceSprites
+    shr ax, 1
+    inc ax                  ; AL = numero de esta ficha
+    mov bl, C_WHITE
+    call DrawNumber
+    mov cl, al
+    pop bx
+    pop ax
+    add ax, 24
+    add dl, 3
+    cmp cl, 4
+    jne dp_next             ; despues de la 4 se baja de fila
+    mov ax, PIECE_X
+    add bx, 32
+    mov dl, PCOL + 1
+    add dh, 4
+dp_next:
+    add di, 2
+    pop cx
+    loop dp_piece
+
+    POP_ALL
+    ret
+DrawPanel ENDP
+
+; ----------------------------------------------------------
+; UpdatePanelSloth: hace guinar al perezoso del panel si ya paso su tiempo
+;   Recibe: nada (usa PanelMood, PanelFrame y PanelTick)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+UpdatePanelSloth PROC
+    PUSH_ALL
+    cmp PanelMood, 0
+    jne up_end              ; feliz o triste: no guina
+    call GetTicks
+    mov bx, ax              ; BX = tic de ahora
+    sub ax, PanelTick       ; AX = tics que pasaron
+    mov cx, PANEL_OPEN_T
+    cmp PanelFrame, 0
+    je up_check
+    mov cx, PANEL_WINK_T
+up_check:
+    cmp ax, cx
+    jb up_end               ; todavia no le toca
+    mov PanelTick, bx
+    xor PanelFrame, 1       ; 0 -> 1, 1 -> 0
+    mov al, 0
+    cmp PanelFrame, 0
+    je up_draw
+    mov al, 3               ; cara de guino
+up_draw:
+    call DrawPanelSloth
+up_end:
+    POP_ALL
+    ret
+UpdatePanelSloth ENDP

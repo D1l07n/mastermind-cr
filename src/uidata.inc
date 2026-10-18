@@ -39,6 +39,22 @@ MsgTico     DB 'T', 0, 'I', 0, 'C', 0, 'O', 0
 TicoColors  DB C_BLUE, C_WHITE, C_RED, C_BLUE
 MsgNivel    DB 'Nivel ', 0
 BoardStripes DB C_BLUE, C_WHITE, C_RED, C_WHITE, C_BLUE
+MsgSecreto  DB 'Secreto', 0
+MsgQuestion DB '?', 0
+MsgIntento  DB 'Intento', 0
+MsgSlash    DB '/', 0
+MsgTiempo   DB 'Tiempo', 0
+MsgTimeZero DB '00:00', 0
+MsgFichas   DB 'Fichas', 0
+
+PieceSprites DW OFFSET SprAntorcha0, OFFSET SprBolinchas, OFFSET SprCafe0
+             DW OFFSET SprCrema, OFFSET SprFarol, OFFSET SprGuante0
+             DW OFFSET SprMoneda, OFFSET SprTrompo0
+PanelSloths DW OFFSET SprPerezoso0, OFFSET SprPerezosoVictoria
+            DW OFFSET SprPerezosoTriste, OFFSET SprPerezoso1
 
 HeadFrame   DB 0                ; 0 = perezoso normal, 1 = victoria
 HeadTick    DW 0                ; tic del ultimo cambio
+PanelMood   DB 0                ; 0 = normal, 1 = feliz, 2 = triste
+PanelFrame  DB 0                ; 0 = ojos abiertos, 1 = guino
+PanelTick   DW 0                ; tic del ultimo guino
