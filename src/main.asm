@@ -210,32 +210,9 @@ gk_tstart:
 gk_enter:
     cmp TestMode, 0
     je gk_submit
-    mov cl, NumPos          ; modo prueba: la fila es el secreto
-    mov ch, 0
-    mov si, 0
-gk_tcheck:
-    cmp Guess[si], 0
-    je gk_missing
-    inc si
-    loop gk_tcheck
-    mov cl, NumPos
-    mov si, 0
-gk_tcopy:
-    mov al, Guess[si]
-    mov Secret[si], al
-    mov Guess[si], 0
-    inc si
-    loop gk_tcopy
-    mov TestMode, 0
-    call DrawSecret         ; en prueba el secreto se ve
-    mov al, ActiveRow
-    call DrawActiveRow
-    call GetTicks
-    mov GameTick, ax        ; el reloj empieza de nuevo
-    mov WarnOn, 1
-    mov si, OFFSET MsgPruebaOk
-    mov bl, C_GOLD
-    call DrawStatus
+    call SaveTestSecret
+    cmp al, 0
+    je gk_missing           ; faltan fichas en el secreto
     jmp gk_done
 gk_submit:
     call SubmitGuess
@@ -294,5 +271,52 @@ gk_done:
     POP_ALL
     ret
 GameKey ENDP
+
+; ----------------------------------------------------------
+; SaveTestSecret: en modo prueba, guarda la fila como secreto
+;   Recibe: nada (usa Guess y NumPos)
+;   Devuelve: AL = 0 si faltan fichas, AL = 1 si se guardo
+;   Toca: AX
+; ----------------------------------------------------------
+SaveTestSecret PROC
+    push bx
+    push cx
+    push si
+    mov cl, NumPos          ; modo prueba: la fila es el secreto
+    mov ch, 0
+    mov si, 0
+st_check:
+    cmp Guess[si], 0
+    je st_missing
+    inc si
+    loop st_check
+    mov cl, NumPos
+    mov si, 0
+st_copy:
+    mov al, Guess[si]
+    mov Secret[si], al
+    mov Guess[si], 0
+    inc si
+    loop st_copy
+    mov TestMode, 0
+    call DrawSecret         ; en prueba el secreto se ve
+    mov al, ActiveRow
+    call DrawActiveRow
+    call GetTicks
+    mov GameTick, ax        ; el reloj empieza de nuevo
+    mov WarnOn, 1
+    mov si, OFFSET MsgPruebaOk
+    mov bl, C_GOLD
+    call DrawStatus
+    mov al, 1
+    jmp st_end
+st_missing:
+    mov al, 0
+st_end:
+    pop si
+    pop cx
+    pop bx
+    ret
+SaveTestSecret ENDP
 
 END start

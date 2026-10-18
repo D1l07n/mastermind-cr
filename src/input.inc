@@ -91,6 +91,7 @@ ReadAction ENDP
 
 ; ----------------------------------------------------------
 ; PollAction: como ReadAction, pero NO espera
+;   Recibe:   nada
 ;   Devuelve: AL = ACT_NONE si no hay tecla; si hay, lo mismo
 ;             que ReadAction
 ;   Toca:     AX
@@ -108,6 +109,7 @@ PollAction ENDP
 
 ; ----------------------------------------------------------
 ; GetTicks: lee el reloj del BIOS (sube ~18 veces por segundo)
+;   Recibe:   nada
 ;   Devuelve: AX = contador de tics (parte baja)
 ;   Toca:     AX
 ; ----------------------------------------------------------

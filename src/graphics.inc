@@ -9,6 +9,9 @@ SCREEN_W    EQU 320         ; puntos por fila
 
 ; ----------------------------------------------------------
 ; SetGraphicsMode: pone la pantalla en modo grafico 13h
+;   Recibe: nada
+;   Devuelve: nada
+;   Toca: AX
 ; ----------------------------------------------------------
 SetGraphicsMode PROC
     mov ax, 0013h           ; AH = 00h (cambiar modo), AL = 13h (modo grafico)
@@ -17,6 +20,8 @@ SetGraphicsMode PROC
 SetGraphicsMode ENDP
 
 ; SaveVideoMode: guarda el modo actual en OldVideoMode (va en .DATA de main.asm)
+;   Recibe: nada
+;   Devuelve: OldVideoMode
 ;   Toca: AX, BX
 SaveVideoMode PROC
     mov ah, 0Fh             ; BIOS: que modo hay? -> AL
@@ -26,6 +31,8 @@ SaveVideoMode PROC
 SaveVideoMode ENDP
 
 ; RestoreVideoMode: vuelve al modo guardado en OldVideoMode
+;   Recibe: OldVideoMode
+;   Devuelve: nada
 ;   Toca: AX
 RestoreVideoMode PROC
     mov ah, 00h
@@ -37,6 +44,9 @@ RestoreVideoMode ENDP
 ; ----------------------------------------------------------
 ; LoadPalette: le manda a la tarjeta de video los colores
 ; de nuestros sprites (la tabla SpritePalette de sprites.inc)
+;   Recibe: nada (usa SpritePalette y UiPalette)
+;   Devuelve: nada
+;   Toca: AX, CX, DX, SI
 ; ----------------------------------------------------------
 LoadPalette PROC
     mov dx, 3C8h            ; puerto: "voy a cambiar colores desde el..."
