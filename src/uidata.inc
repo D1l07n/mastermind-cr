@@ -47,6 +47,10 @@ MsgTiempo   DB 'Tiempo', 0
 MsgTimeZero DB '00:00', 0
 MsgFichas   DB 'Fichas', 0
 MsgHelp     DB 'Flechas mover  1-8 ficha  ENTER probar', 0
+MsgFaltan   DB 'Faltan fichas en la fila', 0
+MsgGano     DB 173, 'Ganaste! Pura vida   ESC salir', 0
+MsgPerdio   DB 'Perdiste, mira el secreto  ESC salir', 0
+MsgBlank2   DB '  ', 0
 
 PieceSprites DW OFFSET SprAntorcha0, OFFSET SprBolinchas, OFFSET SprCafe0
              DW OFFSET SprCrema, OFFSET SprFarol, OFFSET SprGuante0
@@ -59,3 +63,8 @@ HeadTick    DW 0                ; tic del ultimo cambio
 PanelMood   DB 0                ; 0 = normal, 1 = feliz, 2 = triste
 PanelFrame  DB 0                ; 0 = ojos abiertos, 1 = guino
 PanelTick   DW 0                ; tic del ultimo guino
+ActiveRow   DB 0                ; fila donde se esta jugando
+CurPos      DB 0                ; casilla elegida (0 = la primera)
+CursorOn    DB 0                ; 1 = marco amarillo visible
+CursorTick  DW 0                ; tic del ultimo parpadeo
+WarnOn      DB 0                ; 1 = la barra muestra un aviso

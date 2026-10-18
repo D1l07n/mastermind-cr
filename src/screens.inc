@@ -33,6 +33,9 @@ ROW_H       EQU 14          ; 168 / 12 filas
 HOLE_X      EQU BOARD_X + 12
 HOLE_SIZE   EQU 10
 SLOT_STEP   EQU 18          ; distancia entre fichas de una fila
+PIECE_BX    EQU BOARD_X + 9 ; primera ficha de una fila del tablero
+FB_X        EQU BOARD_X + 108   ; primer pejibaye de una fila
+CURSOR_T    EQU 5           ; 5 tics = el marco cambia unas 4 veces por segundo
 
 PCOL        EQU PANEL_X / 8 + 1     ; primera columna de texto del panel
 PROW        EQU PANEL_Y / 8         ; primera fila de texto del panel
@@ -364,19 +367,8 @@ dp_secret:
     pop cx
     push ax
     mov al, cl
-    mov dl, PCOL + 8
-    cmp al, 10
-    jae dp_try
-    inc dl                  ; un solo digito: correrlo para que pegue al "/"
-dp_try:
-    mov bl, C_WHITE
-    call DrawNumber
-    mov si, OFFSET MsgSlash
-    mov dl, PCOL + 10
-    call DrawText
-    mov al, ch
-    mov dl, PCOL + 11
-    call DrawNumber
+    mov ah, ch
+    call DrawTryCount
 
     mov si, OFFSET MsgTiempo
     mov dh, PROW + 9
@@ -491,3 +483,289 @@ DrawStatus PROC
     POP_ALL
     ret
 DrawStatus ENDP
+
+; ----------------------------------------------------------
+; DrawTry: dibuja un intento del historial en su fila
+;   Recibe: AL = numero de intento (0 = el primero)
+;           usa HistGuess, HistBulls, HistCows y NumPos de game.inc
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawTry PROC
+    PUSH_ALL
+    mov ah, 0
+    mov di, ax              ; DI = numero de intento
+    mov bl, ROW_H
+    mul bl
+    add ax, BOARD_Y
+    mov bx, ax              ; BX = y de la fila
+
+    mov si, C_WOOD
+    test di, 1
+    jz tr_clear
+    mov si, C_WOOD_DK
+tr_clear:
+    mov ax, ROW_X
+    mov cx, ROW_W
+    mov dx, ROW_H
+    call FillRect           ; borrar los huecos de la fila
+
+    push di
+    mov ax, di
+    mov cl, MAX_POS
+    mul cl
+    mov di, ax              ; DI = donde empieza la fila en HistGuess
+    mov cl, NumPos
+    mov ch, 0
+    mov ax, PIECE_BX
+tr_piece:
+    push cx
+    push ax
+    mov al, HistGuess[di]   ; ficha de 1 a 8
+    dec al
+    mov ah, 0
+    shl ax, 1
+    mov si, ax
+    mov si, PieceSprites[si]
+    pop ax
+    add si, SPRITE_W        ; saltar la fila 0 (vacia)
+    mov cx, SPRITE_W
+    mov dx, ROW_H           ; solo 14 filas del dibujo
+    call DrawSprite
+    add ax, SLOT_STEP
+    inc di
+    pop cx
+    loop tr_piece
+    pop di
+
+    mov ax, FB_X
+    mov dx, ROW_H
+    mov si, OFFSET SprCompleto + SPRITE_W
+    mov cl, HistBulls[di]
+    mov ch, 0
+    jcxz tr_cows
+tr_bull:
+    push cx
+    mov cx, SPRITE_W
+    call DrawSprite         ; pejibaye entero = toro
+    add ax, SPRITE_W
+    pop cx
+    loop tr_bull
+tr_cows:
+    mov si, OFFSET SprParcial + SPRITE_W
+    mov cl, HistCows[di]
+    mov ch, 0
+    jcxz tr_end
+tr_cow:
+    push cx
+    mov cx, SPRITE_W
+    call DrawSprite         ; pejibaye mordido = vaca
+    add ax, SPRITE_W
+    pop cx
+    loop tr_cow
+tr_end:
+    POP_ALL
+    ret
+DrawTry ENDP
+
+; ----------------------------------------------------------
+; DrawActiveSlot: dibuja una casilla de la fila activa (hueco o ficha)
+;   Recibe: AL = fila, AH = posicion (0 = la primera); usa Guess
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawActiveSlot PROC
+    PUSH_ALL
+    mov bl, ah
+    mov bh, 0               ; BX = posicion
+    mov ah, 0
+    mov cl, ROW_H
+    mul cl
+    add ax, BOARD_Y
+    mov dx, ax              ; DX = y
+    mov al, SLOT_STEP
+    mul bl
+    add ax, PIECE_BX - 1    ; AX = x de la casilla
+    mov si, bx              ; SI = posicion
+    mov bx, dx              ; BX = y
+    push si
+    mov cx, SLOT_STEP
+    mov dx, ROW_H
+    mov si, C_ACTIVE
+    call FillRect           ; borrar la casilla (y el marco)
+    pop si
+    mov dl, Guess[si]
+    cmp dl, 0
+    jne as_piece
+    add ax, HOLE_X - PIECE_BX + 1
+    add bx, (ROW_H - HOLE_SIZE) / 2
+    mov cx, HOLE_SIZE
+    mov dx, HOLE_SIZE
+    mov si, C_SLOT
+    call FillRect           ; casilla vacia: cuadrito gris
+    jmp as_end
+as_piece:
+    inc ax                  ; x de la ficha
+    dec dl
+    mov dh, 0
+    shl dx, 1
+    mov si, dx
+    mov si, PieceSprites[si]
+    add si, SPRITE_W        ; saltar la fila 0
+    mov cx, SPRITE_W
+    mov dx, ROW_H
+    call DrawSprite
+as_end:
+    POP_ALL
+    ret
+DrawActiveSlot ENDP
+
+; ----------------------------------------------------------
+; DrawActiveRow: pinta la fila donde se esta jugando
+;   Recibe: AL = fila; usa Guess y NumPos
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawActiveRow PROC
+    PUSH_ALL
+    push ax
+    mov ah, 0
+    mov cl, ROW_H
+    mul cl
+    add ax, BOARD_Y
+    mov bx, ax
+    mov ax, ROW_X
+    mov cx, ROW_W
+    mov dx, ROW_H
+    mov si, C_ACTIVE
+    call FillRect
+    pop ax
+    mov cl, NumPos
+    mov ch, 0
+    mov ah, 0               ; AH = posicion
+ar_slot:
+    call DrawActiveSlot
+    inc ah
+    loop ar_slot
+    POP_ALL
+    ret
+DrawActiveRow ENDP
+
+; ----------------------------------------------------------
+; DrawCursor: pone o quita el marco amarillo de la casilla elegida
+;   Recibe: nada (usa ActiveRow, CurPos y CursorOn)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawCursor PROC
+    PUSH_ALL
+    mov al, ActiveRow
+    mov ah, CurPos
+    cmp CursorOn, 0
+    jne cu_frame
+    call DrawActiveSlot     ; sin marco: se redibuja la casilla
+    jmp cu_end
+cu_frame:
+    mov ah, 0
+    mov cl, ROW_H
+    mul cl
+    add ax, BOARD_Y
+    mov bx, ax              ; BX = y
+    mov al, SLOT_STEP
+    mul CurPos
+    add ax, PIECE_BX - 1    ; AX = x
+    mov cx, SLOT_STEP
+    mov dx, ROW_H
+    mov si, C_CURSOR
+    call DrawFrame
+cu_end:
+    POP_ALL
+    ret
+DrawCursor ENDP
+
+; ----------------------------------------------------------
+; UpdateCursor: hace parpadear el marco si ya paso su tiempo
+;   Recibe: nada (usa CursorOn y CursorTick)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+UpdateCursor PROC
+    PUSH_ALL
+    call GetTicks
+    mov bx, ax
+    sub ax, CursorTick
+    cmp ax, CURSOR_T
+    jb uc_end               ; todavia no le toca
+    mov CursorTick, bx
+    xor CursorOn, 1
+    call DrawCursor
+uc_end:
+    POP_ALL
+    ret
+UpdateCursor ENDP
+
+; ----------------------------------------------------------
+; DrawTryCount: escribe "intento/maximo" en el panel
+;   Recibe: AL = intento, AH = maximo
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawTryCount PROC
+    PUSH_ALL
+    push ax
+    mov si, OFFSET MsgBlank2
+    mov dh, PROW + 7
+    mov dl, PCOL + 8
+    mov bl, C_WHITE
+    call DrawText           ; borrar el numero anterior
+    pop ax
+    mov dl, PCOL + 8
+    cmp al, 10
+    jae tc_num
+    inc dl                  ; un solo digito: correrlo para que pegue al "/"
+tc_num:
+    call DrawNumber
+    mov si, OFFSET MsgSlash
+    mov dl, PCOL + 10
+    call DrawText
+    mov al, ah
+    mov dl, PCOL + 11
+    call DrawNumber
+    POP_ALL
+    ret
+DrawTryCount ENDP
+
+; ----------------------------------------------------------
+; DrawSecret: destapa el secreto en las cajitas del panel
+;   Recibe: nada (usa Secret y NumPos de game.inc)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawSecret PROC
+    PUSH_ALL
+    mov cl, NumPos
+    mov ch, 0
+    mov ax, SECRET_X - 1
+    mov bx, SECRET_Y - 1
+    mov di, 0
+sc_piece:
+    push cx
+    mov cx, SPRITE_W
+    mov dx, SPRITE_H
+    mov si, 0
+    call FillRect           ; borrar la cajita con el "?"
+    mov dl, Secret[di]
+    dec dl
+    mov dh, 0
+    shl dx, 1
+    mov si, dx
+    mov si, PieceSprites[si]
+    mov dx, SPRITE_H
+    call DrawSprite
+    add ax, 16
+    inc di
+    pop cx
+    loop sc_piece
+    POP_ALL
+    ret
+DrawSecret ENDP
