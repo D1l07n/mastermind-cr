@@ -5,7 +5,7 @@
 ; ==========================================================
 
 UI_START    EQU 200
-UI_COUNT    EQU 12
+UI_COUNT    EQU 15
 
 C_WOOD      EQU 200
 C_WOOD_DK   EQU 201
@@ -19,6 +19,9 @@ C_ACTIVE    EQU 208
 C_CURSOR    EQU 209
 C_SLOT      EQU 210
 C_SELECT    EQU 211
+C_FLAG_B    EQU 212         ; franjas: colores propios para poder parpadear
+C_FLAG_W    EQU 213
+C_FLAG_R    EQU 214
 
 UiPalette   LABEL BYTE
             db 38,26,14         ; 200 madera
@@ -33,12 +36,15 @@ UiPalette   LABEL BYTE
             db 63,63,16         ; 209 marco amarillo
             db 12,12,12         ; 210 cuadro de ficha
             db 14,30,56         ; 211 ficha seleccionada
+            db  8,20,56         ; 212 franja azul
+            db 63,63,63         ; 213 franja blanca
+            db 56,10,10         ; 214 franja roja
 
 MsgMaster   DB 'MASTERMIND', 0
 MsgTico     DB 'T', 0, 'I', 0, 'C', 0, 'O', 0
 TicoColors  DB C_BLUE, C_WHITE, C_RED, C_BLUE
 MsgNivel    DB 'Nivel ', 0
-BoardStripes DB C_BLUE, C_WHITE, C_RED, C_WHITE, C_BLUE
+BoardStripes DB C_FLAG_B, C_FLAG_W, C_FLAG_R, C_FLAG_W, C_FLAG_B
 MsgSecreto  DB 'Secreto', 0
 MsgQuestion DB '?', 0
 MsgIntento  DB 'Intento', 0
@@ -53,15 +59,18 @@ MsgPerdio   DB 'Perdiste, mira el secreto  ESC salir', 0
 MsgBlank2   DB '  ', 0
 MsgColon    DB ':', 0
 MsgPrueba   DB 'PRUEBA: pon el secreto y ENTER', 0
-MsgPruebaOk DB 'Secreto listo, ahora adivina', 0
+MsgPruebaOk DB 'Secreto listo. V lo muestra o tapa', 0
 
 PieceSprites DW OFFSET SprAntorcha0, OFFSET SprBolinchas, OFFSET SprCafe0
              DW OFFSET SprCrema, OFFSET SprFarol, OFFSET SprGuante0
              DW OFFSET SprMoneda, OFFSET SprTrompo0
+PieceSprites1 DW OFFSET SprAntorcha1, OFFSET SprBolinchas, OFFSET SprCafe1
+             DW OFFSET SprCrema, OFFSET SprFarol, OFFSET SprGuante1
+             DW OFFSET SprMoneda, OFFSET SprTrompo1
 PanelSloths DW OFFSET SprPerezoso0, OFFSET SprPerezosoVictoria
             DW OFFSET SprPerezosoTriste, OFFSET SprPerezoso1
 
-HeadFrame   DB 0                ; 0 = perezoso normal, 1 = victoria
+HeadFrame   DB 0                ; cuadro del trompo del encabezado (0 o 1)
 HeadTick    DW 0                ; tic del ultimo cambio
 PanelMood   DB 0                ; 0 = normal, 1 = feliz, 2 = triste
 PanelFrame  DB 0                ; 0 = ojos abiertos, 1 = guino
@@ -74,3 +83,13 @@ WarnOn      DB 0                ; 1 = la barra muestra un aviso
 TestMode    DB 0                ; 1 = se esta escribiendo el secreto a mano
 GameTick    DW 0                ; tic en que empezo la partida
 ShownSec    DW 0                ; segundo que muestra el reloj
+RevealPos   DB 0FFh             ; ficha del secreto que sigue (0FFh = nada)
+RevealTick  DW 0                ; tic de la ultima ficha destapada
+PieceFrame  DB 0                ; cuadro de las fichas que se mueven (0 o 1)
+PieceTick   DW 0                ; tic del ultimo cambio de cuadro
+SecretShown DB 0                ; un bit por cada ficha del secreto ya destapada
+FxMode      DB 0                ; efecto final: 0 = nada, 1 = bandera, 2 = oscurecer
+FxStep      DB 0                ; paso del efecto
+FxTick      DW 0                ; tic del ultimo paso
+FlagRGB     DB 8,20,56, 63,63,63, 56,10,10   ; azul, blanco, rojo...
+            DB 8,20,56, 63,63,63             ; ...repetidos para poder girarlos

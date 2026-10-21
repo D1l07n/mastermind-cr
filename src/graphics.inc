@@ -76,6 +76,27 @@ lp_ui:
 LoadPalette ENDP
 
 ; ----------------------------------------------------------
+; SetColor: cambia un solo color de la paleta
+;   Recibe: AL = numero de color, SI = direccion de 3 bytes (rojo, verde, azul)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+SetColor PROC
+    PUSH_ALL
+    mov dx, 3C8h
+    out dx, al              ; que color se va a cambiar
+    mov dx, 3C9h
+    mov cx, 3
+co_rgb:
+    mov al, [si]
+    out dx, al
+    inc si
+    loop co_rgb
+    POP_ALL
+    ret
+SetColor ENDP
+
+; ----------------------------------------------------------
 ; DrawSprite: dibuja un sprite de cualquier tamano
 ;   Recibe: SI = direccion del sprite (ej. OFFSET SprCafe0)
 ;           AX = x, BX = y
@@ -120,6 +141,53 @@ ds_skip:
     POP_ALL
     ret
 DrawSprite ENDP
+
+; ----------------------------------------------------------
+; DrawSpriteBg: dibuja un sprite pintando el fondo donde es transparente
+;   Recibe: lo mismo que DrawSprite, y BP = color de fondo (no lo cambia)
+;   Devuelve: nada. Cada punto se pinta una sola vez: no parpadea.
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawSpriteBg PROC
+    PUSH_ALL
+    push es
+
+    push dx
+    mov di, ax
+    mov ax, bx
+    mov bx, SCREEN_W
+    mul bx
+    add di, ax              ; DI = y * 320 + x
+    pop dx
+
+    mov ax, VIDEO_SEG
+    mov es, ax
+    mov bx, cx
+    mov ax, bp
+    mov ah, al              ; AH = color de fondo
+
+db_row:
+    mov cx, bx
+db_pixel:
+    mov al, [si]
+    cmp al, 0
+    jne db_put
+    mov al, ah              ; transparente: va el fondo
+db_put:
+    mov es:[di], al
+    inc si
+    inc di
+    loop db_pixel
+
+    add di, SCREEN_W
+    sub di, bx
+    dec dx
+    jnz db_row
+
+    pop es
+    POP_ALL
+    ret
+DrawSpriteBg ENDP
 
 ; ----------------------------------------------------------
 ; FillRect: pinta un rectangulo de un solo color

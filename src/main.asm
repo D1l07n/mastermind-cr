@@ -40,8 +40,11 @@ start:
     call DrawGameScreen
 
 main_loop:
-    call UpdateHeadSloth
+    call UpdateHeadIcon
+    call UpdatePieces
     call UpdatePanelSloth
+    call UpdateReveal
+    call UpdateFx
     cmp GameState, 0
     jne ml_key              ; partida terminada: sin cursor
     call UpdateCursor
@@ -74,6 +77,8 @@ exit_game:
 ; ----------------------------------------------------------
 DrawGameScreen PROC
     PUSH_ALL
+    mov FxMode, 0
+    call LoadPalette        ; quitar el efecto final de la partida anterior
     mov ax, 0
     mov bx, 0
     mov cx, 320
@@ -146,6 +151,8 @@ gk_nowarn:
     je gk_enter
     cmp al, ACT_TEST
     je gk_test
+    cmp al, ACT_VIEW
+    je gk_view
     jmp gk_done
 
 gk_left:
@@ -196,6 +203,7 @@ gk_test:
     cmp TryNum, 0
     je gk_tstart
     call NewGame            ; ya se jugo: empezar de cero
+    mov RevealPos, 0FFh     ; cortar el destape si venia corriendo
     mov PanelMood, 0
     call DrawGameScreen
 gk_tstart:
@@ -206,6 +214,16 @@ gk_tstart:
     mov si, OFFSET MsgPrueba
     mov bl, C_GOLD
     call DrawStatus
+    jmp gk_done
+gk_view:
+    cmp TestMode, 0
+    jne gk_done             ; todavia se esta escribiendo el secreto
+    cmp SecretShown, 0
+    je gk_vshow
+    call DrawSecretBoxes    ; se veia: taparlo con "?"
+    jmp gk_done
+gk_vshow:
+    call DrawSecret         ; estaba tapado: mostrarlo
     jmp gk_done
 gk_enter:
     cmp TestMode, 0
@@ -247,18 +265,16 @@ gk_clear:
     jmp gk_done
 
 gk_over:
-    call DrawSecret
-    mov al, 1               ; perezoso feliz
+    mov RevealPos, 0        ; destapar el secreto ficha por ficha
+    call GetTicks
+    mov RevealTick, ax
     mov si, OFFSET MsgGano
     mov bl, C_GOLD
     cmp GameState, 1
     je gk_show
-    mov al, 2               ; perezoso triste
     mov si, OFFSET MsgPerdio
     mov bl, C_RED
 gk_show:
-    mov PanelMood, al
-    call DrawPanelSloth
     call DrawStatus
     POP_ALL
     ret                     ; sin marco: la partida termino
@@ -298,8 +314,7 @@ st_copy:
     mov Guess[si], 0
     inc si
     loop st_copy
-    mov TestMode, 0
-    call DrawSecret         ; en prueba el secreto se ve
+    mov TestMode, 0         ; el secreto queda tapado; V lo muestra
     mov al, ActiveRow
     call DrawActiveRow
     call GetTicks

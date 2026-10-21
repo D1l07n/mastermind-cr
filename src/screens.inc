@@ -21,10 +21,13 @@ BAR_Y       EQU 190
 BAR_W       EQU 320
 BAR_H       EQU 10
 
-HSLOTH_X    EQU 4           ; perezoso del encabezado
-HSLOTH_Y    EQU 2
-HEAD_NORMAL_T  EQU 36       ; 36 tics = 2 segundos normal
-HEAD_VICTORY_T EQU 18       ; 18 tics = 1 segundo de victoria
+ICON_X      EQU 4           ; trompo del encabezado (no sale en el nivel facil)
+ICON_Y      EQU 2
+ICON_T      EQU 7           ; 7 tics = el trompo gira unas 2.5 veces por segundo
+FLAG_T      EQU 4           ; 4 tics por cada giro de colores de la bandera
+DARK_T      EQU 4           ; 4 tics por cada paso del oscurecido
+DARK_STEPS  EQU 8           ; 8 pasos x 4 tics = casi 2 segundos, hasta media luz
+PIECE_T     EQU 7           ; 7 tics = las fichas cambian unas 2.5 veces por segundo
 
 STRIPES     EQU 5           ; franjas de bandera a cada lado
 ROW_X       EQU BOARD_X + STRIPES
@@ -47,6 +50,7 @@ PIECE_X     EQU 8 * (PCOL + 1) - 4  ; primera ficha del panel
 PIECE_Y     EQU 8 * (PROW + 16) - 20
 PANEL_OPEN_T  EQU 54        ; 54 tics = 3 segundos con los ojos abiertos
 PANEL_WINK_T  EQU 9         ; 9 tics = medio segundo de guino
+REVEAL_T      EQU 9         ; 9 tics = una ficha del secreto cada medio segundo
 
 ; ----------------------------------------------------------
 ; DrawFrame: dibuja el contorno de un rectangulo (1 punto)
@@ -123,60 +127,56 @@ hd_tico:
     mov dl, 37
     call DrawNumber
 
-    call DrawHeadSloth
+    call DrawHeadIcon
     POP_ALL
     ret
 DrawHeader ENDP
 
 ; ----------------------------------------------------------
-; DrawHeadSloth: dibuja el perezoso del encabezado segun HeadFrame
-;   Recibe: nada (usa HeadFrame: 0 = normal, 1 = victoria)
+; DrawHeadIcon: dibuja el trompo del encabezado segun HeadFrame
+;   Recibe: nada (usa HeadFrame: 0 o 1)
 ;   Devuelve: nada
 ;   Toca: nada (guarda y restaura todo)
 ; ----------------------------------------------------------
-DrawHeadSloth PROC
+DrawHeadIcon PROC
     PUSH_ALL
-    mov ax, HSLOTH_X
-    mov bx, HSLOTH_Y
+    push bp
+    mov ax, ICON_X
+    mov bx, ICON_Y
     mov cx, SPRITE_W
     mov dx, SPRITE_H
-    mov si, 0
-    call FillRect           ; borrar la cara anterior
-    mov si, OFFSET SprPerezoso0
+    mov bp, 0               ; fondo negro del encabezado
+    mov si, OFFSET SprTrompo0
     cmp HeadFrame, 0
     je hs_draw
-    mov si, OFFSET SprPerezosoVictoria
+    mov si, OFFSET SprTrompo1
 hs_draw:
-    call DrawSprite
+    call DrawSpriteBg
+    pop bp
     POP_ALL
     ret
-DrawHeadSloth ENDP
+DrawHeadIcon ENDP
 
 ; ----------------------------------------------------------
-; UpdateHeadSloth: cambia el perezoso del encabezado si ya paso su tiempo
+; UpdateHeadIcon: hace girar el trompo si ya paso su tiempo
 ;   Recibe: nada (usa HeadFrame y HeadTick)
 ;   Devuelve: nada
 ;   Toca: nada (guarda y restaura todo)
 ; ----------------------------------------------------------
-UpdateHeadSloth PROC
+UpdateHeadIcon PROC
     PUSH_ALL
     call GetTicks
     mov bx, ax              ; BX = tic de ahora
     sub ax, HeadTick        ; AX = tics que pasaron
-    mov cx, HEAD_NORMAL_T
-    cmp HeadFrame, 0
-    je us_check
-    mov cx, HEAD_VICTORY_T
-us_check:
-    cmp ax, cx
+    cmp ax, ICON_T
     jb us_end               ; todavia no le toca
     mov HeadTick, bx
     xor HeadFrame, 1        ; 0 -> 1, 1 -> 0
-    call DrawHeadSloth
+    call DrawHeadIcon
 us_end:
     POP_ALL
     ret
-UpdateHeadSloth ENDP
+UpdateHeadIcon ENDP
 
 ; ----------------------------------------------------------
 ; DrawBoard: dibuja el tablero vacio (madera, bandera y huecos)
@@ -334,29 +334,7 @@ DrawPanel PROC
     mov dl, PCOL
     mov bl, C_GOLD
     call DrawText
-    pop ax
-    push ax
-    mov cl, ah
-    mov ch, 0               ; CX = cuantos "?"
-    mov ax, SECRET_X
-    mov dh, PROW + 4
-    mov dl, PCOL + 2
-dp_secret:
-    push cx
-    push dx
-    mov bx, SECRET_Y
-    mov cx, 14
-    mov dx, 14
-    mov si, C_BORDER
-    call DrawFrame
-    pop dx
-    mov si, OFFSET MsgQuestion
-    mov bl, C_GOLD
-    call DrawText
-    add ax, 16
-    add dl, 2
-    pop cx
-    loop dp_secret
+    call DrawSecretBoxes
 
     mov si, OFFSET MsgIntento
     mov dh, PROW + 7
@@ -522,11 +500,7 @@ tr_piece:
     push cx
     push ax
     mov al, HistGuess[di]   ; ficha de 1 a 8
-    dec al
-    mov ah, 0
-    shl ax, 1
-    mov si, ax
-    mov si, PieceSprites[si]
+    call GetPieceSprite
     pop ax
     add si, SPRITE_W        ; saltar la fila 0 (vacia)
     mov cx, SPRITE_W
@@ -606,11 +580,10 @@ DrawActiveSlot PROC
     jmp as_end
 as_piece:
     inc ax                  ; x de la ficha
-    dec dl
-    mov dh, 0
-    shl dx, 1
-    mov si, dx
-    mov si, PieceSprites[si]
+    push ax
+    mov al, dl
+    call GetPieceSprite
+    pop ax
     add si, SPRITE_W        ; saltar la fila 0
     mov cx, SPRITE_W
     mov dx, ROW_H
@@ -736,8 +709,40 @@ tc_num:
 DrawTryCount ENDP
 
 ; ----------------------------------------------------------
-; DrawSecret: destapa el secreto en las cajitas del panel
-;   Recibe: nada (usa Secret y NumPos de game.inc)
+; DrawSecretPiece: destapa una ficha del secreto en el panel
+;   Recibe: AL = posicion (0 = la primera)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawSecretPiece PROC
+    PUSH_ALL
+    mov ah, 0
+    mov di, ax              ; DI = posicion en Secret
+    mov cl, al
+    mov bl, 1
+    shl bl, cl
+    or SecretShown, bl      ; anotar que esta ficha ya se ve
+    mov cl, 4
+    shl ax, cl              ; cada cajita mide 16
+    add ax, SECRET_X - 1
+    mov bx, SECRET_Y - 1
+    mov cx, SPRITE_W
+    mov dx, SPRITE_H
+    mov si, 0
+    call FillRect           ; borrar la cajita con el "?"
+    push ax
+    mov al, Secret[di]
+    call GetPieceSprite
+    pop ax
+    mov dx, SPRITE_H
+    call DrawSprite
+    POP_ALL
+    ret
+DrawSecretPiece ENDP
+
+; ----------------------------------------------------------
+; DrawSecret: destapa todo el secreto de una vez
+;   Recibe: nada (usa NumPos de game.inc)
 ;   Devuelve: nada
 ;   Toca: nada (guarda y restaura todo)
 ; ----------------------------------------------------------
@@ -745,30 +750,55 @@ DrawSecret PROC
     PUSH_ALL
     mov cl, NumPos
     mov ch, 0
-    mov ax, SECRET_X - 1
-    mov bx, SECRET_Y - 1
-    mov di, 0
+    mov al, 0
 sc_piece:
-    push cx
-    mov cx, SPRITE_W
-    mov dx, SPRITE_H
-    mov si, 0
-    call FillRect           ; borrar la cajita con el "?"
-    mov dl, Secret[di]
-    dec dl
-    mov dh, 0
-    shl dx, 1
-    mov si, dx
-    mov si, PieceSprites[si]
-    mov dx, SPRITE_H
-    call DrawSprite
-    add ax, 16
-    inc di
-    pop cx
+    call DrawSecretPiece
+    inc al
     loop sc_piece
     POP_ALL
     ret
 DrawSecret ENDP
+
+; ----------------------------------------------------------
+; UpdateReveal: destapa la siguiente ficha del secreto si ya paso su tiempo
+;   y al terminar pone la cara feliz o triste
+;   Recibe: nada (usa RevealPos, RevealTick y GameState)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+UpdateReveal PROC
+    PUSH_ALL
+    cmp RevealPos, 0FFh
+    je rv_end               ; no se esta destapando nada
+    call GetTicks
+    mov bx, ax
+    sub ax, RevealTick
+    cmp ax, REVEAL_T
+    jb rv_end               ; todavia no le toca
+    mov RevealTick, bx
+    mov al, RevealPos
+    call DrawSecretPiece
+    inc al
+    mov RevealPos, al
+    cmp al, NumPos
+    jb rv_end
+    mov RevealPos, 0FFh     ; ya salio todo: poner la cara
+    mov al, 1               ; perezoso feliz
+    cmp GameState, 1
+    je rv_face
+    mov al, 2               ; perezoso triste
+rv_face:
+    mov PanelMood, al
+    call DrawPanelSloth
+    mov al, GameState       ; 1 = gano: bandera, 2 = perdio: oscurecer
+    mov FxMode, al
+    mov FxStep, 0
+    call GetTicks
+    mov FxTick, ax
+rv_end:
+    POP_ALL
+    ret
+UpdateReveal ENDP
 
 ; ----------------------------------------------------------
 ; DrawTime: escribe el tiempo como MM:SS en el panel
@@ -823,3 +853,376 @@ ut_end:
     POP_ALL
     ret
 UpdateTimer ENDP
+
+; ----------------------------------------------------------
+; GetPieceSprite: busca el dibujo de una ficha en el cuadro actual
+;   Recibe: AL = ficha (1 a 8)
+;   Devuelve: SI = direccion del dibujo
+;   Toca: SI
+; ----------------------------------------------------------
+GetPieceSprite PROC
+    push bx
+    mov bl, al
+    dec bl
+    mov bh, 0
+    shl bx, 1               ; cada direccion mide 2 bytes
+    mov si, PieceSprites[bx]
+    cmp PieceFrame, 0
+    je gp_end
+    mov si, PieceSprites1[bx]
+gp_end:
+    pop bx
+    ret
+GetPieceSprite ENDP
+
+; ----------------------------------------------------------
+; DrawPieceBg: redibuja una ficha que se mueve, con su fondo
+;   Recibe: AL = ficha (1 a 8), DX = x, BX = y
+;           CX = filas (14 en el tablero, 16 en el panel), BP = fondo
+;   Devuelve: nada. Si la ficha tiene un solo cuadro no hace nada.
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawPieceBg PROC
+    PUSH_ALL
+    mov ah, 0
+    mov di, ax
+    dec di
+    shl di, 1
+    mov si, PieceSprites[di]
+    cmp si, PieceSprites1[di]
+    je pb_end               ; los dos cuadros son iguales: no se mueve
+    call GetPieceSprite
+    cmp cx, SPRITE_H
+    je pb_draw
+    add si, SPRITE_W        ; en el tablero se salta la fila 0
+pb_draw:
+    mov ax, dx
+    mov dx, cx
+    mov cx, SPRITE_W
+    call DrawSpriteBg
+pb_end:
+    POP_ALL
+    ret
+DrawPieceBg ENDP
+
+; ----------------------------------------------------------
+; AnimPanel: mueve las fichas de la lista del panel
+;   Recibe: nada (usa NumColors)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+AnimPanel PROC
+    PUSH_ALL
+    push bp
+    mov bp, C_SLOT
+    mov cl, NumColors
+    mov ch, 0
+    mov al, 1               ; AL = ficha
+    mov dx, PIECE_X
+    mov bx, PIECE_Y
+ap_piece:
+    push cx
+    mov cx, SPRITE_H
+    call DrawPieceBg
+    pop cx
+    add dx, 24
+    cmp al, 4
+    jne ap_next             ; despues de la 4 se baja de fila
+    mov dx, PIECE_X
+    add bx, 32
+ap_next:
+    inc al
+    loop ap_piece
+    pop bp
+    POP_ALL
+    ret
+AnimPanel ENDP
+
+; ----------------------------------------------------------
+; AnimBoard: mueve las fichas del tablero (intentos y fila activa)
+;   Recibe: nada (usa TryNum, HistGuess, Guess y GameState)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+AnimBoard PROC
+    PUSH_ALL
+    push bp
+    mov bp, C_WOOD
+    mov bx, BOARD_Y
+    mov di, 0               ; DI = inicio de la fila en HistGuess
+    mov cl, TryNum
+    mov ch, 0
+    jcxz ab_active
+ab_row:
+    push cx
+    push di
+    mov dx, PIECE_BX
+    mov cl, NumPos
+    mov ch, 0
+ab_piece:
+    push cx
+    mov al, HistGuess[di]
+    mov cx, ROW_H
+    call DrawPieceBg
+    pop cx
+    add dx, SLOT_STEP
+    inc di
+    loop ab_piece
+    pop di
+    add di, MAX_POS
+    add bx, ROW_H
+    xor bp, C_WOOD XOR C_WOOD_DK    ; alternar madera clara y oscura
+    pop cx
+    loop ab_row
+
+ab_active:
+    cmp GameState, 0
+    jne ab_end              ; partida terminada: no hay fila activa
+    mov al, ActiveRow
+    mov ah, 0
+    mov cl, ROW_H
+    mul cl
+    add ax, BOARD_Y
+    mov bx, ax              ; BX = y de la fila activa
+    mov bp, C_ACTIVE
+    mov dx, PIECE_BX
+    mov di, 0
+    mov cl, NumPos
+    mov ch, 0
+ab_guess:
+    push cx
+    mov al, Guess[di]
+    cmp al, 0
+    je ab_gnext             ; casilla vacia
+    mov cx, ROW_H
+    call DrawPieceBg
+ab_gnext:
+    pop cx
+    add dx, SLOT_STEP
+    inc di
+    loop ab_guess
+    cmp CursorOn, 0
+    je ab_end
+    call DrawCursor         ; el marco toca el borde de la ficha
+ab_end:
+    pop bp
+    POP_ALL
+    ret
+AnimBoard ENDP
+
+; ----------------------------------------------------------
+; AnimSecret: mueve las fichas del secreto que ya se destaparon
+;   Recibe: nada (usa SecretShown y Secret)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+AnimSecret PROC
+    PUSH_ALL
+    push bp
+    mov bp, 0               ; fondo negro de la cajita
+    mov dx, SECRET_X - 1
+    mov bx, SECRET_Y - 1
+    mov di, 0
+    mov ah, 1               ; AH = bit de esta ficha
+    mov cl, NumPos
+    mov ch, 0
+an_piece:
+    test SecretShown, ah
+    jz an_next              ; todavia esta el "?"
+    push cx
+    mov al, Secret[di]
+    mov cx, SPRITE_H
+    call DrawPieceBg
+    pop cx
+an_next:
+    add dx, 16
+    inc di
+    shl ah, 1
+    loop an_piece
+    pop bp
+    POP_ALL
+    ret
+AnimSecret ENDP
+
+; ----------------------------------------------------------
+; UpdatePieces: cambia el cuadro de las fichas que se mueven
+;   Recibe: nada (usa PieceFrame y PieceTick)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+UpdatePieces PROC
+    PUSH_ALL
+    call GetTicks
+    mov bx, ax
+    sub ax, PieceTick
+    cmp ax, PIECE_T
+    jb pu_end               ; todavia no le toca
+    mov PieceTick, bx
+    xor PieceFrame, 1
+    call AnimPanel
+    call AnimBoard
+    call AnimSecret
+pu_end:
+    POP_ALL
+    ret
+UpdatePieces ENDP
+
+; ----------------------------------------------------------
+; UpdateFx: avanza el efecto final (bandera u oscurecido) si ya paso su tiempo
+;   Recibe: nada (usa FxMode, FxStep y FxTick)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+UpdateFx PROC
+    PUSH_ALL
+    cmp FxMode, 0
+    je fx_end               ; no hay efecto
+    call GetTicks
+    mov bx, ax
+    sub ax, FxTick
+    mov cx, FLAG_T
+    cmp FxMode, 1
+    je fx_check
+    mov cx, DARK_T
+fx_check:
+    cmp ax, cx
+    jb fx_end               ; todavia no le toca
+    mov FxTick, bx
+    inc FxStep
+    cmp FxMode, 1
+    jne fx_dark
+    call FlagStep
+    jmp fx_end
+fx_dark:
+    call DarkStep
+fx_end:
+    POP_ALL
+    ret
+UpdateFx ENDP
+
+; ----------------------------------------------------------
+; FlagStep: gira los colores de las franjas (azul -> blanco -> rojo)
+;   Recibe: nada (usa FxStep)
+;   Devuelve: nada. Sigue girando hasta que empiece otra partida.
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+FlagStep PROC
+    PUSH_ALL
+    mov al, FxStep
+    mov ah, 0
+    mov bl, 3
+    div bl                  ; AH = giro (0, 1 o 2)
+    mov al, ah
+    mov ah, 0
+    mov si, ax
+    shl si, 1
+    add si, ax              ; SI = giro * 3 (cada color son 3 bytes)
+    add si, OFFSET FlagRGB
+    mov al, C_FLAG_B
+    call SetColor
+    add si, 3
+    mov al, C_FLAG_W
+    call SetColor
+    add si, 3
+    mov al, C_FLAG_R
+    call SetColor
+    POP_ALL
+    ret
+FlagStep ENDP
+
+; ----------------------------------------------------------
+; DarkStep: oscurece un poco toda la paleta (sprites y pantallas)
+;   Recibe: nada (usa FxStep, SpritePalette y UiPalette)
+;   Devuelve: nada. Al llegar a DARK_STEPS queda con media luz.
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DarkStep PROC
+    PUSH_ALL
+    mov bl, 16
+    sub bl, FxStep          ; BL = luz que queda (16 = toda)
+    mov si, OFFSET SpritePalette
+    mov al, PALETTE_START
+    mov cx, PALETTE_COUNT
+    call DarkColors
+    mov si, OFFSET UiPalette
+    mov al, UI_START
+    mov cx, UI_COUNT
+    call DarkColors
+    cmp FxStep, DARK_STEPS
+    jb dk_end
+    mov FxMode, 0           ; ya termino: se queda oscuro
+dk_end:
+    POP_ALL
+    ret
+DarkStep ENDP
+
+; ----------------------------------------------------------
+; DarkColors: manda a la tarjeta una tabla de colores con menos luz
+;   Recibe: SI = tabla (rojo, verde, azul), AL = primer color,
+;           CX = cuantos colores, BL = luz (16 = toda, 8 = la mitad)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DarkColors PROC
+    PUSH_ALL
+    mov dx, 3C8h
+    out dx, al              ; desde que color se cambia
+    mov dx, 3C9h
+    mov ax, cx
+    shl cx, 1
+    add cx, ax              ; CX = colores * 3 numeros
+dc_next:
+    mov al, [si]
+    mul bl                  ; AX = numero * luz
+    shr ax, 1
+    shr ax, 1
+    shr ax, 1
+    shr ax, 1               ; / 16
+    out dx, al
+    inc si
+    loop dc_next
+    POP_ALL
+    ret
+DarkColors ENDP
+
+; ----------------------------------------------------------
+; DrawSecretBoxes: tapa el secreto con las cajitas de "?"
+;   Recibe: nada (usa NumPos)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawSecretBoxes PROC
+    PUSH_ALL
+    mov SecretShown, 0      ; ya no se ve ninguna ficha del secreto
+    mov cl, NumPos
+    mov ch, 0               ; CX = cuantos "?"
+    mov ax, SECRET_X
+    mov dh, PROW + 4
+    mov dl, PCOL + 2
+dp_secret:
+    push cx
+    push dx
+    push ax
+    dec ax
+    mov bx, SECRET_Y - 1
+    mov cx, SPRITE_W
+    mov dx, SPRITE_H
+    mov si, 0
+    call FillRect           ; borrar la ficha si estaba destapada
+    pop ax
+    mov bx, SECRET_Y
+    mov cx, 14
+    mov dx, 14
+    mov si, C_BORDER
+    call DrawFrame
+    pop dx
+    mov si, OFFSET MsgQuestion
+    mov bl, C_GOLD
+    call DrawText
+    add ax, 16
+    add dl, 2
+    pop cx
+    loop dp_secret
+    POP_ALL
+    ret
+DrawSecretBoxes ENDP
