@@ -190,6 +190,59 @@ db_put:
 DrawSpriteBg ENDP
 
 ; ----------------------------------------------------------
+; DrawSpriteScaled: dibuja un sprite agrandado (cada punto es un cuadro)
+;   Recibe: lo mismo que DrawSprite, y BP = escala (2 = doble, 3 = triple)
+;   Devuelve: nada. Los puntos con color 0 se pintan negros.
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawSpriteScaled PROC
+    PUSH_ALL
+    push es
+    cld                     ; STOSB avanza hacia adelante
+
+    push dx
+    mov di, ax
+    mov ax, bx
+    mov bx, SCREEN_W
+    mul bx
+    add di, ax              ; DI = y * 320 + x
+    pop dx
+
+    mov ax, VIDEO_SEG
+    mov es, ax
+    mov bx, cx              ; BX = ancho del dibujo
+
+ss_row:
+    push dx
+    mov dx, bp              ; cada fila del dibujo se repite BP veces
+ss_repeat:
+    push si
+    push di
+    mov cx, bx
+ss_pixel:
+    mov al, [si]
+    push cx
+    mov cx, bp
+    rep stosb               ; pintar BP puntos seguidos del mismo color
+    pop cx
+    inc si
+    loop ss_pixel
+    pop di
+    pop si
+    add di, SCREEN_W
+    dec dx
+    jnz ss_repeat
+    add si, bx              ; siguiente fila del dibujo
+    pop dx
+    dec dx
+    jnz ss_row
+
+    pop es
+    POP_ALL
+    ret
+DrawSpriteScaled ENDP
+
+; ----------------------------------------------------------
 ; FillRect: pinta un rectangulo de un solo color
 ;   Recibe: AX = x, BX = y, CX = ancho, DX = alto
 ;           SI = color (solo se usa la parte baja)

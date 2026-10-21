@@ -18,6 +18,7 @@ INCLUDE graphics.inc
 INCLUDE input.inc
 INCLUDE game.inc
 INCLUDE screens.inc
+INCLUDE intro.inc
 
 start:
     mov ax, @data
@@ -26,6 +27,9 @@ start:
     call SaveVideoMode      ; anotar como estaba la pantalla
     call SetGraphicsMode
     call LoadPalette
+    call ShowIntro
+    cmp al, 1
+    je exit_game            ; ESC en la presentacion
 
     call InitRandom
     mov al, 0               ; nivel facil (el menu lo elegira en la fase 7)

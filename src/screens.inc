@@ -1140,6 +1140,23 @@ DarkStep PROC
     PUSH_ALL
     mov bl, 16
     sub bl, FxStep          ; BL = luz que queda (16 = toda)
+    call PaletteLight
+    cmp FxStep, DARK_STEPS
+    jb dk_end
+    mov FxMode, 0           ; ya termino: se queda oscuro
+dk_end:
+    POP_ALL
+    ret
+DarkStep ENDP
+
+; ----------------------------------------------------------
+; PaletteLight: pone toda la paleta (sprites y pantallas) con cierta luz
+;   Recibe: BL = luz (16 = toda, 8 = la mitad, 0 = todo negro)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+PaletteLight PROC
+    PUSH_ALL
     mov si, OFFSET SpritePalette
     mov al, PALETTE_START
     mov cx, PALETTE_COUNT
@@ -1148,13 +1165,9 @@ DarkStep PROC
     mov al, UI_START
     mov cx, UI_COUNT
     call DarkColors
-    cmp FxStep, DARK_STEPS
-    jb dk_end
-    mov FxMode, 0           ; ya termino: se queda oscuro
-dk_end:
     POP_ALL
     ret
-DarkStep ENDP
+PaletteLight ENDP
 
 ; ----------------------------------------------------------
 ; DarkColors: manda a la tarjeta una tabla de colores con menos luz
