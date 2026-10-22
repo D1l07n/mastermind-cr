@@ -3,7 +3,7 @@
 ; Une todas las partes con INCLUDE y decide el orden.
 ; ==========================================================
 .MODEL SMALL
-.STACK 100h
+.STACK 400h
 JUMPS                       ; TASM alarga solo los saltos que quedan lejos
 
 INCLUDE macros.inc
@@ -318,7 +318,8 @@ st_copy:
     mov Guess[si], 0
     inc si
     loop st_copy
-    mov TestMode, 0         ; el secreto queda tapado; V lo muestra
+    mov TestMode, 0
+    call DrawSecretBoxes    ; el secreto queda tapado; V lo muestra
     mov al, ActiveRow
     call DrawActiveRow
     call GetTicks

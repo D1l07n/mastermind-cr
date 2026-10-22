@@ -21,7 +21,7 @@ BAR_Y       EQU 190
 BAR_W       EQU 320
 BAR_H       EQU 10
 
-ICON_X      EQU 4           ; trompo del encabezado (no sale en el nivel facil)
+ICON_X      EQU 4           ; trompo del encabezado
 ICON_Y      EQU 2
 ICON_T      EQU 7           ; 7 tics = el trompo gira unas 2.5 veces por segundo
 FLAG_T      EQU 4           ; 4 tics por cada giro de colores de la bandera
@@ -48,8 +48,6 @@ SECRET_X    EQU 8 * (PCOL + 2) - 3  ; cajita del primer "?"
 SECRET_Y    EQU 8 * (PROW + 4) - 3
 PIECE_X     EQU 8 * (PCOL + 1) - 4  ; primera ficha del panel
 PIECE_Y     EQU 8 * (PROW + 16) - 20
-PANEL_OPEN_T  EQU 54        ; 54 tics = 3 segundos con los ojos abiertos
-PANEL_WINK_T  EQU 9         ; 9 tics = medio segundo de guino
 REVEAL_T      EQU 9         ; 9 tics = una ficha del secreto cada medio segundo
 
 ; ----------------------------------------------------------
@@ -269,7 +267,21 @@ DrawPanelSloth PROC
     mov bl, al
     mov bh, 0
     shl bx, 1               ; cada direccion de la tabla mide 2 bytes
-    push bx
+    mov si, PanelSloths[bx]
+    call DrawPanelFace
+    POP_ALL
+    ret
+DrawPanelSloth ENDP
+
+; ----------------------------------------------------------
+; DrawPanelFace: borra la cara del perezoso del panel y dibuja otra
+;   Recibe: SI = cara (ej. OFFSET SprPerezoso0)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawPanelFace PROC
+    PUSH_ALL
+    push si
     mov ax, PSLOTH_X
     mov bx, PSLOTH_Y
     mov cx, SPRITE_W
@@ -277,11 +289,10 @@ DrawPanelSloth PROC
     mov si, 0
     call FillRect           ; borrar la cara anterior
     pop si
-    mov si, PanelSloths[si]
     call DrawSprite
     POP_ALL
     ret
-DrawPanelSloth ENDP
+DrawPanelFace ENDP
 
 ; ----------------------------------------------------------
 ; DrawPieceSlot: dibuja una ficha sobre su cuadrito gris
@@ -328,6 +339,7 @@ DrawPanel PROC
     call DrawFrame
     mov al, 0
     call DrawPanelSloth
+    mov PanelFrame, 0
 
     mov si, OFFSET MsgSecreto
     mov dh, PROW + 2
@@ -405,7 +417,8 @@ dp_next:
 DrawPanel ENDP
 
 ; ----------------------------------------------------------
-; UpdatePanelSloth: hace guinar al perezoso del panel si ya paso su tiempo
+; UpdatePanelSloth: pasa el perezoso del panel a la siguiente cara de
+;   SlothSeq si ya paso su tiempo (la misma secuencia de la presentacion)
 ;   Recibe: nada (usa PanelMood, PanelFrame y PanelTick)
 ;   Devuelve: nada
 ;   Toca: nada (guarda y restaura todo)
@@ -413,25 +426,29 @@ DrawPanel ENDP
 UpdatePanelSloth PROC
     PUSH_ALL
     cmp PanelMood, 0
-    jne up_end              ; feliz o triste: no guina
+    jne up_end              ; feliz o triste: se queda quieto
     call GetTicks
     mov bx, ax              ; BX = tic de ahora
     sub ax, PanelTick       ; AX = tics que pasaron
-    mov cx, PANEL_OPEN_T
-    cmp PanelFrame, 0
-    je up_check
-    mov cx, PANEL_WINK_T
-up_check:
-    cmp ax, cx
+    mov dl, PanelFrame
+    mov dh, 0
+    mov di, dx
+    shl di, 1
+    shl di, 1               ; DI = paso * 4 (cada paso son 2 palabras)
+    cmp ax, SlothSeq[di+2]
     jb up_end               ; todavia no le toca
     mov PanelTick, bx
-    xor PanelFrame, 1       ; 0 -> 1, 1 -> 0
-    mov al, 0
-    cmp PanelFrame, 0
-    je up_draw
-    mov al, 3               ; cara de guino
-up_draw:
-    call DrawPanelSloth
+    inc dl
+    cmp dl, SLOTH_STEPS
+    jb up_next
+    mov dl, 0
+up_next:
+    mov PanelFrame, dl
+    mov di, dx
+    shl di, 1
+    shl di, 1
+    mov si, SlothSeq[di]
+    call DrawPanelFace
 up_end:
     POP_ALL
     ret
@@ -1091,6 +1108,10 @@ fx_check:
     inc FxStep
     cmp FxMode, 1
     jne fx_dark
+    cmp FxStep, 3
+    jb fx_flag
+    mov FxStep, 0           ; la bandera tiene 3 giros: 0, 1, 2
+fx_flag:
     call FlagStep
     jmp fx_end
 fx_dark:
@@ -1108,11 +1129,7 @@ UpdateFx ENDP
 ; ----------------------------------------------------------
 FlagStep PROC
     PUSH_ALL
-    mov al, FxStep
-    mov ah, 0
-    mov bl, 3
-    div bl                  ; AH = giro (0, 1 o 2)
-    mov al, ah
+    mov al, FxStep          ; AL = giro (0, 1 o 2)
     mov ah, 0
     mov si, ax
     shl si, 1

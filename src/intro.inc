@@ -354,7 +354,7 @@ sn_next:
     call DrawStage
 
     mov IntroFrame, 0
-    mov al, 0
+    mov si, OFFSET SprPerezoso0
     call DrawIntroSloth
     mov PressOn, 0
     POP_ALL
@@ -408,18 +408,13 @@ DrawStage ENDP
 
 ; ----------------------------------------------------------
 ; DrawIntroSloth: dibuja el perezoso grande
-;   Recibe: AL = 0 ojos abiertos, 1 guino
+;   Recibe: SI = cara del perezoso (ej. OFFSET SprPerezoso0)
 ;   Devuelve: nada
 ;   Toca: nada (guarda y restaura todo)
 ; ----------------------------------------------------------
 DrawIntroSloth PROC
     PUSH_ALL
     push bp
-    mov si, OFFSET SprPerezoso0
-    cmp al, 0
-    je is_draw
-    mov si, OFFSET SprPerezoso1
-is_draw:
     mov ax, BIG_X
     mov bx, BIG_Y
     mov cx, SPRITE_W
@@ -432,8 +427,9 @@ is_draw:
 DrawIntroSloth ENDP
 
 ; ----------------------------------------------------------
-; UpdateIntroSloth: hace guinar al perezoso grande si ya paso su tiempo
-;   Recibe: nada (usa IntroFrame e IntroTick)
+; UpdateIntroSloth: pasa a la siguiente cara de SlothSeq si ya paso su tiempo
+;   (mira a los lados sospechoso y guina)
+;   Recibe: nada (usa IntroFrame, IntroTick y SlothSeq)
 ;   Devuelve: nada
 ;   Toca: nada (guarda y restaura todo)
 ; ----------------------------------------------------------
@@ -442,16 +438,24 @@ UpdateIntroSloth PROC
     call GetTicks
     mov bx, ax
     sub ax, IntroTick
-    mov cx, PANEL_OPEN_T
-    cmp IntroFrame, 0
-    je is_check
-    mov cx, PANEL_WINK_T
-is_check:
-    cmp ax, cx
+    mov dl, IntroFrame
+    mov dh, 0
+    mov di, dx
+    shl di, 1
+    shl di, 1               ; DI = paso * 4 (cada paso son 2 palabras)
+    cmp ax, SlothSeq[di+2]  ; ya duro lo que le toca?
     jb is_end
     mov IntroTick, bx
-    xor IntroFrame, 1
-    mov al, IntroFrame
+    inc dl
+    cmp dl, SLOTH_STEPS
+    jb is_next
+    mov dl, 0               ; vuelve a empezar
+is_next:
+    mov IntroFrame, dl
+    mov di, dx
+    shl di, 1
+    shl di, 1
+    mov si, SlothSeq[di]
     call DrawIntroSloth
 is_end:
     POP_ALL

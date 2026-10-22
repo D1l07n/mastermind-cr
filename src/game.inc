@@ -1,5 +1,5 @@
 ; game.inc - Reglas del juego (no dibuja ni lee teclado)
-; Fichas: 1..8 (1 = moneda, 2 = rueda, ...), 0 = casilla vacia
+; Fichas: 1..8 (1 = antorcha, 2 = bolinchas, ...), 0 = casilla vacia
 
 MAX_POS     EQU 5
 NUM_COLORS  EQU 8
@@ -14,8 +14,12 @@ CountS      DB NUM_COLORS + 1 DUP(0)
 CountG      DB NUM_COLORS + 1 DUP(0)
 
 .CODE
-; ScoreGuess: compara Guess con Secret. Recibe Secret, Guess, NumPos.
-; Devuelve Bulls, Cows. Toca nada.
+; ----------------------------------------------------------
+; ScoreGuess: compara Guess con Secret
+;   Recibe: Secret, Guess y NumPos
+;   Devuelve: Bulls y Cows
+;   Toca: nada
+; ----------------------------------------------------------
 ScoreGuess PROC
     PUSH_ALL
 
@@ -78,9 +82,12 @@ LevelTable  DB 4, 6, 0, 12      ; facil
             DB 5, 8, 1, 10      ; dificil
 
 .CODE
-; SetLevel: copia los datos del nivel AL (0..2) a las variables.
-;   Recibe: AL = nivel. Devuelve: NumPos, NumColors, AllowRepeat, MaxTries.
-;   Toca nada.
+; ----------------------------------------------------------
+; SetLevel: copia los datos de un nivel a las variables
+;   Recibe: AL = nivel (0 a 2)
+;   Devuelve: NumPos, NumColors, AllowRepeat y MaxTries
+;   Toca: nada
+; ----------------------------------------------------------
 SetLevel PROC
     PUSH_ALL
     mov Level, al
@@ -106,8 +113,12 @@ Seed        DW 0                ; numero que cambia cada vez que se pide uno al 
 PrevSecret  DB MAX_POS DUP(0)    ; secreto de la partida anterior
 
 .CODE
-; InitRandom: toma la semilla del reloj (INT 1Ah). Se llama una vez al inicio.
-;   Toca nada.
+; ----------------------------------------------------------
+; InitRandom: toma la semilla del reloj (INT 1Ah), una vez al inicio
+;   Recibe: nada
+;   Devuelve: Seed
+;   Toca: nada
+; ----------------------------------------------------------
 InitRandom PROC
     PUSH_ALL
     mov ah, 00h
@@ -117,8 +128,12 @@ InitRandom PROC
     ret
 InitRandom ENDP
 
-; Random: devuelve en AL un numero al azar de 1 a NumColors.
-;   Toca AX.
+; ----------------------------------------------------------
+; Random: saca un numero al azar
+;   Recibe: nada (usa Seed y NumColors)
+;   Devuelve: AL = numero de 1 a NumColors (cambia Seed)
+;   Toca: AX
+; ----------------------------------------------------------
 Random PROC
     push dx
     mov ax, Seed                ; Seed = Seed * 25173 + 13849
@@ -135,9 +150,13 @@ Random PROC
     ret
 Random ENDP
 
-; MakeSecret: llena Secret con NumPos fichas al azar.
-;   Si AllowRepeat = 0, no repite fichas. Nunca saca el mismo
-;   secreto de la partida anterior. Toca nada.
+; ----------------------------------------------------------
+; MakeSecret: llena Secret con fichas al azar; si AllowRepeat = 0 no
+;   repite fichas, y nunca saca el mismo secreto de la partida anterior
+;   Recibe: nada (usa NumPos, AllowRepeat y PrevSecret)
+;   Devuelve: Secret y PrevSecret
+;   Toca: nada
+; ----------------------------------------------------------
 MakeSecret PROC
     PUSH_ALL
     mov cl, NumPos
@@ -194,9 +213,13 @@ HistBulls   DB MAX_TRIES DUP(0)             ; toros de cada intento
 HistCows    DB MAX_TRIES DUP(0)             ; vacas de cada intento
 
 .CODE
-; NewGame: prepara una partida nueva del nivel actual.
-;   Saca el secreto, borra el intento y pone los contadores en cero.
-;   Toca nada.
+; ----------------------------------------------------------
+; NewGame: prepara una partida nueva del nivel actual: saca el
+;   secreto, borra el intento y pone los contadores en cero
+;   Recibe: nada
+;   Devuelve: Secret, Guess, TryNum y GameState listos
+;   Toca: nada
+; ----------------------------------------------------------
 NewGame PROC
     PUSH_ALL
     call MakeSecret
@@ -212,11 +235,14 @@ ng_clear:
     ret
 NewGame ENDP
 
-; SubmitGuess: evalua el intento que esta en Guess.
+; ----------------------------------------------------------
+; SubmitGuess: evalua el intento que esta en Guess
+;   Recibe: nada (usa Guess, NumPos y MaxTries)
 ;   Devuelve: AL = 0 si estaba incompleto (no gasta turno),
 ;             AL = 1 si se evaluo. Actualiza Bulls, Cows, el historial,
-;             TryNum y GameState.
-;   Toca AX.
+;             TryNum y GameState
+;   Toca: AX
+; ----------------------------------------------------------
 SubmitGuess PROC
     push bx
     push cx

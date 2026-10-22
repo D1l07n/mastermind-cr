@@ -88,7 +88,7 @@ PanelSloths DW OFFSET SprPerezoso0, OFFSET SprPerezosoVictoria
 HeadFrame   DB 0                ; cuadro del trompo del encabezado (0 o 1)
 HeadTick    DW 0                ; tic del ultimo cambio
 PanelMood   DB 0                ; 0 = normal, 1 = feliz, 2 = triste
-PanelFrame  DB 0                ; 0 = ojos abiertos, 1 = guino
+PanelFrame  DB 0                ; paso actual de SlothSeq en el panel
 PanelTick   DW 0                ; tic del ultimo guino
 ActiveRow   DB 0                ; fila donde se esta jugando
 CurPos      DB 0                ; casilla elegida (0 = la primera)
@@ -106,7 +106,13 @@ SecretShown DB 0                ; un bit por cada ficha del secreto ya destapada
 FxMode      DB 0                ; efecto final: 0 = nada, 1 = bandera, 2 = oscurecer
 FxStep      DB 0                ; paso del efecto
 FxTick      DW 0                ; tic del ultimo paso
-IntroFrame  DB 0                ; perezoso de la presentacion: 0 = abierto, 1 = guino
+IntroFrame  DB 0                ; paso actual de SlothSeq en la presentacion
+SLOTH_STEPS EQU 5
+SlothSeq    DW OFFSET SprPerezoso0, 36  ; cara y tics que dura: normal,
+            DW OFFSET SprPerezosoSospecha0, 15  ; mira a la izquierda sospechoso,
+            DW OFFSET SprPerezosoSospecha1, 15  ; mira a la derecha sospechoso,
+            DW OFFSET SprPerezoso0, 6   ; vuelve al centro
+            DW OFFSET SprPerezoso1, 11  ; y guina
 IntroTick   DW 0
 PressOn     DB 0                ; 1 = se ve "Presiona una tecla"
 PressTick   DW 0
