@@ -69,8 +69,8 @@ MsgTimeZero DB '00:00', 0
 MsgFichas   DB 'Fichas', 0
 MsgHelp     DB 'Flechas mover  1-8 ficha  ENTER probar', 0
 MsgFaltan   DB 'Faltan fichas en la fila', 0
-MsgGano     DB 173, 'Ganaste! Pura vida   ESC salir', 0
-MsgPerdio   DB 'Perdiste, mira el secreto  ESC salir', 0
+MsgGano     DB 173, 'Ganaste!  ENTER otra   ESC men', 163, 0
+MsgPerdio   DB 'Perdiste.  ENTER otra   ESC men', 163, 0
 MsgBlank2   DB '  ', 0
 MsgColon    DB ':', 0
 MsgPrueba   DB 'PRUEBA: pon el secreto y ENTER', 0

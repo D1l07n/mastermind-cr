@@ -19,6 +19,7 @@ INCLUDE input.inc
 INCLUDE game.inc
 INCLUDE screens.inc
 INCLUDE intro.inc
+INCLUDE menu.inc
 
 start:
     mov ax, @data
@@ -32,16 +33,25 @@ start:
     je exit_game            ; ESC en la presentacion
 
     call InitRandom
-    mov al, 0               ; nivel facil (el menu lo elegira en la fase 7)
+    mov al, 0               ; empieza en facil; el menu lo cambia
     call SetLevel
-    call NewGame
 
-    call GetTicks
-    mov HeadTick, ax
-    mov PanelTick, ax
-    mov CursorTick, ax
-    mov GameTick, ax
-    call DrawGameScreen
+menu_loop:
+    call RunMenu            ; AL = opcion elegida
+    cmp al, MENU_EXIT
+    je exit_game
+    cmp al, MENU_HELP
+    jne ml_cred
+    call ShowInstructions
+    jmp menu_loop
+ml_cred:
+    cmp al, MENU_CRED
+    jne new_game            ; la que queda es Jugar
+    call ShowCredits
+    jmp menu_loop
+
+new_game:
+    call StartGame
 
 main_loop:
     call UpdateHeadIcon
@@ -58,11 +68,13 @@ ml_key:
     cmp al, ACT_NONE
     je main_loop
     cmp al, ACT_ESC
-    je exit_game            ; el menu llega en la fase 7
+    je menu_loop            ; ESC vuelve al menu
     cmp GameState, 0
     je ml_play
+    cmp al, ACT_ENTER
+    je new_game             ; partida terminada: ENTER juega otra
     cmp al, ACT_TEST
-    jne main_loop           ; partida terminada: solo ESC o H
+    jne main_loop           ; partida terminada: solo ENTER, ESC o H
 ml_play:
     call GameKey
     jmp main_loop
