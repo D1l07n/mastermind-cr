@@ -72,14 +72,13 @@ ScoreGuess ENDP
 
 ; ---------- Niveles ----------
 .DATA
-Level       DB 0                ; 0 = facil, 1 = normal, 2 = dificil
-NumColors   DB 6                ; colores que se pueden usar
-AllowRepeat DB 0                ; 0 = no se repiten, 1 = si
-MaxTries    DB 12               ; intentos que tiene el jugador
-; por nivel: posiciones, colores, repeticion, intentos
-LevelTable  DB 4, 6, 0, 12      ; facil
-            DB 4, 6, 1, 10      ; normal
-            DB 5, 8, 1, 10      ; dificil
+Level       DB 0                
+NumColors   DB 6               
+AllowRepeat DB 0              
+MaxTries    DB 12               
+LevelTable  DB 4, 6, 0, 12      
+            DB 4, 6, 1, 10      
+            DB 5, 8, 1, 10      
 
 .CODE
 ; ----------------------------------------------------------
@@ -93,7 +92,7 @@ SetLevel PROC
     mov Level, al
     mov ah, 0
     mov bx, ax
-    shl bx, 1                   ; BX = nivel * 4 (cada fila tiene 4 datos)
+    shl bx, 1                   
     shl bx, 1
     mov al, LevelTable[bx]
     mov NumPos, al
@@ -109,8 +108,8 @@ SetLevel ENDP
 
 ; ---------- Secreto al azar ----------
 .DATA
-Seed        DW 0                ; numero que cambia cada vez que se pide uno al azar
-PrevSecret  DB MAX_POS DUP(0)    ; secreto de la partida anterior
+Seed        DW 0                
+PrevSecret  DB MAX_POS DUP(0)    
 
 .CODE
 ; ----------------------------------------------------------
@@ -122,7 +121,7 @@ PrevSecret  DB MAX_POS DUP(0)    ; secreto de la partida anterior
 InitRandom PROC
     PUSH_ALL
     mov ah, 00h
-    int 1Ah                     ; CX:DX = tics desde la medianoche
+    int 1Ah                   
     mov Seed, dx
     POP_ALL
     ret
@@ -136,16 +135,16 @@ InitRandom ENDP
 ; ----------------------------------------------------------
 Random PROC
     push dx
-    mov ax, Seed                ; Seed = Seed * 25173 + 13849
+    mov ax, Seed                
     mov dx, 25173
     mul dx
     add ax, 13849
     mov Seed, ax
-    mov al, ah                  ; usar la parte alta, que cambia mas
+    mov al, ah                 
     mov ah, 0
-    div NumColors               ; AH = resto, de 0 a NumColors - 1
+    div NumColors               
     mov al, ah
-    inc al                      ; de 1 a NumColors
+    inc al                     
     pop dx
     ret
 Random ENDP
@@ -160,19 +159,19 @@ Random ENDP
 MakeSecret PROC
     PUSH_ALL
     mov cl, NumPos
-    mov ch, 0                   ; CX = cuantas fichas hay que sacar
+    mov ch, 0                   
 ms_start:
-    mov si, 0                   ; SI = posicion que estoy llenando
+    mov si, 0                  
 ms_next:
-    call Random                 ; AL = ficha nueva
+    call Random                
     cmp AllowRepeat, 1
-    je ms_store                 ; se puede repetir: guardarla de una
-    mov bx, 0                   ; revisar las que ya estan
+    je ms_store                 
+    mov bx, 0                   
 ms_check:
     cmp bx, si
-    jae ms_store                ; no estaba: guardarla
+    jae ms_store               
     cmp Secret[bx], al
-    je ms_next                  ; ya estaba: sacar otra
+    je ms_next                  
     inc bx
     jmp ms_check
 ms_store:
@@ -181,17 +180,17 @@ ms_store:
     cmp si, cx
     jb ms_next
 
-    mov bx, 0                   ; igual al anterior? sacar otro
+    mov bx, 0                   
 ms_same:
     mov al, Secret[bx]
     cmp al, PrevSecret[bx]
-    jne ms_save                 ; hay una diferente: sirve
+    jne ms_save                 
     inc bx
     cmp bx, cx
     jb ms_same
-    jmp ms_start                ; todas iguales: empezar de nuevo
+    jmp ms_start          
 ms_save:
-    mov bx, 0                   ; guardarlo para la proxima partida
+    mov bx, 0                  
 ms_copy:
     mov al, Secret[bx]
     mov PrevSecret[bx], al
@@ -202,15 +201,15 @@ ms_copy:
     ret
 MakeSecret ENDP
 
-; ---------- Partida: intentos, historial, ganar o perder ----------
-MAX_TRIES   EQU 12              ; el nivel facil da 12 intentos
+
+MAX_TRIES   EQU 12              
 
 .DATA
 TryNum      DB 0                ; intentos ya gastados
 GameState   DB 0                ; 0 = jugando, 1 = gano, 2 = perdio
-HistGuess   DB MAX_TRIES * MAX_POS DUP(0)   ; cada intento, en orden
-HistBulls   DB MAX_TRIES DUP(0)             ; toros de cada intento
-HistCows    DB MAX_TRIES DUP(0)             ; vacas de cada intento
+HistGuess   DB MAX_TRIES * MAX_POS DUP(0)   
+HistBulls   DB MAX_TRIES DUP(0)             
+HistCows    DB MAX_TRIES DUP(0)            
 
 .CODE
 ; ----------------------------------------------------------
@@ -249,7 +248,7 @@ SubmitGuess PROC
     push si
     push di
 
-    mov cl, NumPos              ; 1. revisar que no haya casillas vacias
+    mov cl, NumPos              
     mov ch, 0
     mov si, 0
 sub_check:
@@ -258,18 +257,18 @@ sub_check:
     inc si
     loop sub_check
 
-    call ScoreGuess             ; 2. contar toros y vacas
+    call ScoreGuess             
 
-    mov al, TryNum              ; 3. guardar en el historial
+    mov al, TryNum            
     mov ah, 0
-    mov di, ax                  ; DI = numero de intento
+    mov di, ax                  
     mov bl, Bulls
     mov HistBulls[di], bl
     mov bl, Cows
     mov HistCows[di], bl
     mov bl, MAX_POS
-    mul bl                      ; AX = intento * MAX_POS
-    mov di, ax                  ; DI = donde empieza su fila
+    mul bl                      
+    mov di, ax                 
     mov cl, NumPos
     mov ch, 0
     mov si, 0
@@ -281,16 +280,16 @@ sub_copy:
     loop sub_copy
     inc TryNum
 
-    mov al, Bulls               ; 4. gano o perdio?
+    mov al, Bulls             
     cmp al, NumPos
     jne sub_not_won
-    mov GameState, 1            ; todos son toros: gano
+    mov GameState, 1            
     jmp sub_done
 sub_not_won:
     mov al, TryNum
     cmp al, MaxTries
     jb sub_done
-    mov GameState, 2            ; se acabaron los intentos: perdio
+    mov GameState, 2           
 sub_done:
     mov al, 1
     jmp sub_exit
