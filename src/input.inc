@@ -23,11 +23,11 @@ ACT_VIEW    EQU 10          ; V: ver o tapar el secreto
 ; ----------------------------------------------------------
 ReadAction PROC
     mov ah, 00h
-    int 16h                 ; AL = ASCII, AH = codigo de la tecla
+    int 16h
     cmp al, 0
-    je ra_arrow             ; AL = 0: tecla especial (flechas)
+    je ra_arrow
     cmp al, 0E0h
-    je ra_arrow             ; algunos teclados mandan E0h en vez de 0
+    je ra_arrow
 
     cmp al, 13
     je ra_enter
@@ -37,16 +37,16 @@ ReadAction PROC
     je ra_esc
 
     cmp al, '1'
-    jb ra_letter            ; menor que '1': no es numero
+    jb ra_letter
     cmp al, '8'
-    ja ra_letter            ; mayor que '8': no es numero
-    sub al, '0'             ; '3' -> 3
+    ja ra_letter
+    sub al, '0'
     mov ah, al
     mov al, ACT_NUMBER
     ret
 
 ra_letter:
-    or al, 20h              ; mayuscula -> minuscula ('W' -> 'w')
+    or al, 20h
     cmp al, 'w'
     je ra_up
     cmp al, 's'
@@ -103,9 +103,9 @@ ReadAction ENDP
 ; ----------------------------------------------------------
 PollAction PROC
     mov ah, 01h
-    int 16h                 ; hay tecla? ZF = 1 si no hay
+    int 16h
     jz pa_none
-    call ReadAction         ; hay: leerla y traducirla
+    call ReadAction
     ret
 pa_none:
     mov al, ACT_NONE
@@ -121,8 +121,8 @@ PollAction ENDP
 GetTicks PROC
     push es
     mov ax, 0040h
-    mov es, ax              ; ES = zona de datos del BIOS
-    mov ax, es:[006Ch]      ; contador en 0040h:006Ch
+    mov es, ax
+    mov ax, es:[006Ch]
     pop es
     ret
 GetTicks ENDP

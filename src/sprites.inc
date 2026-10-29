@@ -84,7 +84,6 @@ SpritePalette   LABEL BYTE
                 db 52, 5, 5        ; color 87  #D41515  rojo
 
 ; ---- Sprites ----
-; 0 = transparente (DrawSprite no lo pinta).
 SPRITE_W        EQU 16
 SPRITE_H        EQU 16
 

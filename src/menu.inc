@@ -10,8 +10,12 @@ MENU_CRED   EQU 3
 MENU_EXIT   EQU 4
 MENU_ITEMS  EQU 5           ; cuantas opciones hay
 MENU_COL    EQU 14          ; columna de texto de las opciones
-MENU_ROW    EQU 8           ; fila de texto de la primera opcion
+MENU_ROW    EQU 7           ; fila de texto de la primera opcion
 MENU_T      EQU 5           ; tics entre cada vuelta del trompo
+HOW_X       EQU 96          ; segunda pagina de instrucciones: primera ficha
+HOW_STEP    EQU 24          ; distancia entre fichas
+HOW_SY      EQU 40          ; y del secreto
+HOW_GY      EQU 80          ; y del intento
 
 .DATA
 MenuSel     DB 0            ; opcion elegida (0..4)
@@ -28,7 +32,6 @@ MsgFacil    DB 'F', 160, 'cil  ', 0     ; los 3 del mismo largo
 MsgNormal   DB 'Normal ', 0             ; para que tapen al anterior
 MsgDificil  DB 'Dif', 161, 'cil', 0
 LevelNames  DW OFFSET MsgFacil, OFFSET MsgNormal, OFFSET MsgDificil
-MsgMenuAyuda DB 'Flechas elegir   ENTER aceptar', 0
 
 .CODE
 ; ----------------------------------------------------------
@@ -44,7 +47,7 @@ RunMenu PROC
     call GetTicks
     mov MenuTick, ax
 rm_loop:
-    call UpdateMenuCursor   ; el trompo gira mientras se espera
+    call UpdateMenuCursor
     call PollAction
     cmp al, ACT_NONE
     je rm_loop
@@ -59,15 +62,15 @@ rm_loop:
     cmp al, ACT_RIGHT
     je rm_right
     cmp al, ACT_ESC
-    jne rm_loop             ; otra tecla: no hace nada
-    mov al, MENU_EXIT       ; ESC = salir
+    jne rm_loop
+    mov al, MENU_EXIT
     jmp rm_end
 
 rm_up:
     mov bl, MenuSel
     cmp bl, 0
     jne rm_up2
-    mov bl, MENU_ITEMS      ; de la primera salta a la ultima
+    mov bl, MENU_ITEMS
 rm_up2:
     dec bl
     jmp rm_move
@@ -76,31 +79,31 @@ rm_down:
     inc bl
     cmp bl, MENU_ITEMS
     jb rm_move
-    mov bl, 0               ; de la ultima vuelve a la primera
+    mov bl, 0
 rm_move:
     mov al, 0
-    call DrawMenuCursor     ; borrar el marco de la vieja
+    call DrawMenuCursor
     mov al, MenuSel
     mov MenuSel, bl
-    call DrawMenuItem       ; la vieja vuelve a blanco
+    call DrawMenuItem
     mov al, bl
-    call DrawMenuItem       ; la nueva en amarillo
+    call DrawMenuItem
     mov al, 1
-    call DrawMenuCursor     ; marco en la nueva
+    call DrawMenuCursor
     jmp rm_loop
 
 rm_enter:
     mov al, MenuSel
     cmp al, MENU_LEVEL
-    jne rm_end              ; cualquier otra: se la devolvemos a main
+    jne rm_end
 rm_right:
     cmp MenuSel, MENU_LEVEL
-    jne rm_loop             ; las flechas de lado solo sirven en Nivel
+    jne rm_loop
     mov al, Level
-    inc al                  ; siguiente nivel
+    inc al
     cmp al, 3
     jb rm_set
-    mov al, 0               ; despues de dificil vuelve a facil
+    mov al, 0
     jmp rm_set
 rm_left:
     cmp MenuSel, MENU_LEVEL
@@ -108,13 +111,13 @@ rm_left:
     mov al, Level
     cmp al, 0
     jne rm_left2
-    mov al, 3               ; antes de facil va dificil
+    mov al, 3
 rm_left2:
-    dec al                  ; nivel anterior
+    dec al
 rm_set:
     call SetLevel
     mov al, MENU_LEVEL
-    call DrawMenuItem       ; escribir el nombre del nivel nuevo
+    call DrawMenuItem
     jmp rm_loop
 rm_end:
     pop bx
@@ -130,30 +133,30 @@ RunMenu ENDP
 DrawMenu PROC
     PUSH_ALL
     push bp
-    call LoadPalette        ; por si la partida dejo los colores oscuros
+    call LoadPalette
     mov ax, 0
     mov bx, 0
     mov cx, 320
     mov dx, 200
     mov si, 0
-    call FillRect           ; pantalla en negro
+    call FillRect
 
     mov si, OFFSET MsgMaster
     mov dh, 3
     mov dl, 15
     mov bl, C_GOLD
-    call DrawText           ; titulo
+    call DrawText
 
-    mov di, 0               ; DI = franja (0..4)
-    mov bx, 36              ; y de la primera franja
+    mov di, 0
+    mov bx, 36
 dm_flag:
     mov al, BoardStripes[di]
     mov ah, 0
-    mov si, ax              ; color de la franja
+    mov si, ax
     mov ax, 120
     mov cx, 80
     mov dx, 2
-    call FillRect           ; bandera: azul, blanco, rojo, blanco, azul
+    call FillRect
     add bx, 2
     inc di
     cmp di, 5
@@ -165,20 +168,17 @@ dm_flag:
     mov cx, SPRITE_W
     mov dx, SPRITE_H
     mov bp, 3
-    call DrawSpriteScaled   ; perezoso grande a la derecha
+    call DrawSpriteScaled
 
-    mov al, 0               ; AL = opcion
+    mov al, 0
+    mov si, C_BORDER
 dm_item:
     call DrawMenuItem
+    call DrawItemBox
     inc al
     cmp al, MENU_ITEMS
     jb dm_item
 
-    mov si, OFFSET MsgMenuAyuda
-    mov dh, 22
-    mov dl, 5
-    mov bl, C_WHITE
-    call DrawText
     mov al, 1
     call DrawMenuCursor
     pop bp
@@ -197,25 +197,26 @@ DrawMenuItem PROC
     mov bl, C_WHITE
     cmp al, MenuSel
     jne mi_color
-    mov bl, C_CURSOR        ; la elegida va en amarillo
+    mov bl, C_CURSOR
 mi_color:
     mov ah, 0
     mov si, ax
-    shl si, 1               ; SI = opcion * 2 (cada direccion mide 2 bytes)
+    shl si, 1
     mov si, MenuTexts[si]
     mov dh, al
     shl dh, 1
-    add dh, MENU_ROW        ; fila = MENU_ROW + opcion * 2
+    add dh, al
+    add dh, MENU_ROW
     mov dl, MENU_COL
     call DrawText
     cmp al, MENU_LEVEL
     jne mi_end
-    mov al, Level           ; la opcion del nivel dice cual es
+    mov al, Level
     mov ah, 0
     mov si, ax
     shl si, 1
     mov si, LevelNames[si]
-    add dl, 7               ; despues de "Nivel: "
+    add dl, 7
     call DrawText
 mi_end:
     POP_ALL
@@ -223,34 +224,62 @@ mi_end:
 DrawMenuItem ENDP
 
 ; ----------------------------------------------------------
-; DrawMenuCursor: dibuja o borra el marco y el trompo de la opcion elegida
-;   Recibe: AL = 1 dibujar, 0 borrar (usa MenuSel y MenuFrame)
+; DrawItemBox: dibuja la cajita de una opcion del menu
+;   Recibe: AL = opcion (0..4), SI = color
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawItemBox PROC
+    PUSH_ALL
+    mov bl, al
+    mov bh, 0
+    mov cl, 3
+    shl bx, cl
+    mov dx, bx
+    shl bx, 1
+    add bx, dx
+    add bx, MENU_ROW * 8 - 4
+    mov ax, MENU_COL * 8 - 6
+    mov cx, 15 * 8 + 4
+    mov dx, 16
+    call DrawFrame
+    POP_ALL
+    ret
+DrawItemBox ENDP
+
+; ----------------------------------------------------------
+; DrawMenuCursor: marca la opcion elegida (cajita amarilla y trompo)
+;   o le quita la marca (cajita cafe y sin trompo)
+;   Recibe: AL = 1 marcar, 0 quitar (usa MenuSel y MenuFrame)
 ;   Devuelve: nada
 ;   Toca: nada (guarda y restaura todo)
 ; ----------------------------------------------------------
 DrawMenuCursor PROC
     PUSH_ALL
     push bp
-    mov bl, MenuSel
-    mov bh, 0
-    mov cl, 4
-    shl bx, cl              ; BX = opcion * 16 (2 filas de texto)
-    add bx, MENU_ROW * 8 - 4    ; y del marco
-    mov si, 0               ; color 0 = negro: borra
+    mov di, ax
+    mov si, C_BORDER
     cmp al, 0
-    je mc_frame
+    je mc_box
     mov si, C_CURSOR
-mc_frame:
-    mov ax, MENU_COL * 8 - 6
-    mov cx, 15 * 8 + 4
-    mov dx, 16
-    call DrawFrame
-    mov ax, MENU_COL * 8 - 26   ; x del trompo
+mc_box:
+    mov al, MenuSel
+    call DrawItemBox
+    mov ah, 0
+    mov bx, ax
+    mov cl, 3
+    shl bx, cl
+    mov dx, bx
+    shl bx, 1
+    add bx, dx
+    add bx, MENU_ROW * 8 - 4
+    mov ax, MENU_COL * 8 - 26
     mov cx, SPRITE_W
     mov dx, SPRITE_H
-    cmp si, 0
-    jne mc_top
-    call FillRect           ; borrar el trompo (SI ya es 0)
+    and di, 0FFh
+    jnz mc_top
+    mov si, 0
+    call FillRect
     jmp mc_end
 mc_top:
     mov si, OFFSET SprTrompo0
@@ -258,7 +287,7 @@ mc_top:
     je mc_draw
     mov si, OFFSET SprTrompo1
 mc_draw:
-    mov bp, 0               ; fondo negro: no quedan restos del otro cuadro
+    mov bp, 0
     call DrawSpriteBg
 mc_end:
     pop bp
@@ -278,9 +307,9 @@ UpdateMenuCursor PROC
     mov bx, ax
     sub ax, MenuTick
     cmp ax, MENU_T
-    jb um_end               ; todavia no le toca
+    jb um_end
     mov MenuTick, bx
-    xor MenuFrame, 1        ; 0 -> 1 y 1 -> 0
+    xor MenuFrame, 1
     mov al, 1
     call DrawMenuCursor
 um_end:
@@ -302,6 +331,19 @@ MsgIns6     DB 'Flechas mover, 1-8 ficha, ENTER probar', 0
 MsgIns7     DB 'BORRAR quita ficha, ESC vuelve al men', 163, 0
 ExSecret    DB 3, 8, 7, 5   ; ejemplo: cafe, trompo, moneda, farol
 ExGuess     DB 3, 7, 6, 1   ; cafe bien puesto, moneda en otro lugar
+; segunda pagina: el toro en la casilla 3
+HowSecret   DB 3, 8, 7, 5   ; cafe, trompo, moneda, farol
+HowGuess    DB 1, 5, 7, 6   ; antorcha, farol, moneda, guante
+MsgHowTit   DB 168, 'C', 162, 'mo se cuentan?', 0
+MsgHowRes   DB 'Resultado', 0
+MsgHowL1    DB 'verde = TORO: ficha y lugar', 0
+MsgHowL2    DB 'amarillo = VACA: ficha, otro lugar', 0
+MsgHowL3    DB 'X = no est', 160, ' en el secreto', 0
+MsgHowE1    DB 'El toro est', 160, ' en la casilla 3,', 0
+MsgHowE2    DB 'pero su pejibaye sale PRIMERO.', 0
+MsgHowE3    DB 'Siempre salen primero los toros', 0
+MsgHowE4    DB 'y despu', 130, 's las vacas: los pejibayes', 0
+MsgHowE5    DB 'NO dicen en cu', 160, 'l casilla.', 0
 
 .CODE
 ; ----------------------------------------------------------
@@ -317,7 +359,7 @@ ShowInstructions PROC
     mov cx, 320
     mov dx, 200
     mov si, 0
-    call FillRect           ; pantalla en negro
+    call FillRect
 
     mov bl, C_GOLD
     mov si, OFFSET MsgInsTit
@@ -335,30 +377,34 @@ ShowInstructions PROC
     mov dl, 2
     call DrawText
     mov si, OFFSET ExSecret
+    mov ax, 96
     mov bx, 44
-    call DrawExampleRow     ; fila del secreto
+    mov dx, 20
+    call DrawExampleRow
     mov bl, C_WHITE
     mov si, OFFSET MsgInsTry
     mov dh, 9
     mov dl, 2
     call DrawText
     mov si, OFFSET ExGuess
+    mov ax, 96
     mov bx, 68
-    call DrawExampleRow     ; fila del intento
+    mov dx, 20
+    call DrawExampleRow
 
     mov cx, SPRITE_W
     mov dx, SPRITE_H
     mov si, OFFSET SprCompleto
     mov ax, 190
     mov bx, 68
-    call DrawSprite         ; resultado: 1 toro...
+    call DrawSprite
     mov ax, 16
     mov bx, 92
-    call DrawSprite         ; ...y la explicacion de abajo
+    call DrawSprite
     mov si, OFFSET SprParcial
     mov ax, 210
     mov bx, 68
-    call DrawSprite         ; ...y 1 vaca
+    call DrawSprite
     mov ax, 16
     mov bx, 116
     call DrawSprite
@@ -387,37 +433,227 @@ ShowInstructions PROC
     mov dh, 22
     call DrawText
     call WaitKeyMsg
+    call ShowHowCount
     POP_ALL
     ret
 ShowInstructions ENDP
 
 ; ----------------------------------------------------------
 ; DrawExampleRow: dibuja 4 fichas en fila para el ejemplo
-;   Recibe: SI = 4 bytes con las fichas (1..8), BX = y
+;   Recibe: SI = 4 bytes con las fichas (1..8), AX = x de la primera,
+;           BX = y, DX = distancia entre fichas
 ;   Devuelve: nada
 ;   Toca: nada (guarda y restaura todo)
 ; ----------------------------------------------------------
 DrawExampleRow PROC
     PUSH_ALL
-    mov di, si              ; DI = ficha que sigue
-    mov ax, 96              ; x de la primera ficha
+    push bp
+    mov bp, dx
+    mov di, si
     mov cx, 4
 er_next:
     push ax
     mov al, [di]
-    call GetPieceSprite     ; SI = dibujo de esa ficha
+    call GetPieceSprite
     pop ax
     push cx
     mov cx, SPRITE_W
     mov dx, SPRITE_H
     call DrawSprite
     pop cx
-    add ax, 20              ; la siguiente, 20 puntos a la derecha
+    add ax, bp
     inc di
     loop er_next
+    pop bp
     POP_ALL
     ret
 DrawExampleRow ENDP
+
+; ----------------------------------------------------------
+; ShowHowCount: segunda pagina de instrucciones. Marca en colores
+;   cual ficha es toro, cual vaca y cual no esta, y explica que los
+;   pejibayes no dicen en cual casilla
+;   Recibe: nada
+;   Devuelve: nada (espera una tecla)
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+ShowHowCount PROC
+    PUSH_ALL
+    mov ax, 0
+    mov bx, 0
+    mov cx, 320
+    mov dx, 200
+    mov si, 0
+    call FillRect
+
+    mov si, OFFSET MsgHowTit
+    mov dh, 1
+    mov dl, 11
+    mov bl, C_GOLD
+    call DrawText
+    mov al, 1
+    mov dh, 3
+    mov dl, 13
+    mov bl, C_BORDER
+hc_num:
+    call DrawNumber
+    inc al
+    add dl, 3
+    cmp al, 4
+    jbe hc_num
+
+    mov bl, C_WHITE
+    mov si, OFFSET MsgInsSec
+    mov dh, 5
+    mov dl, 2
+    call DrawText
+    mov si, OFFSET MsgInsTry
+    mov dh, 10
+    call DrawText
+    mov si, OFFSET MsgHowRes
+    mov dh, 8
+    mov dl, 26
+    call DrawText
+    mov si, OFFSET HowSecret
+    mov ax, HOW_X
+    mov bx, HOW_SY
+    mov dx, HOW_STEP
+    call DrawExampleRow
+    mov si, OFFSET HowGuess
+    mov bx, HOW_GY
+    call DrawExampleRow
+    call DrawHowMarks
+
+    mov si, OFFSET MsgHowL1
+    mov dh, 13
+    mov dl, 1
+    mov bl, C_GREEN
+    call DrawText
+    mov si, OFFSET MsgHowL2
+    mov dh, 14
+    mov bl, C_CURSOR
+    call DrawText
+    mov si, OFFSET MsgHowL3
+    mov dh, 15
+    mov bl, C_RED
+    call DrawText
+    mov bl, C_WHITE
+    mov si, OFFSET MsgHowE1
+    mov dh, 17
+    call DrawText
+    mov si, OFFSET MsgHowE2
+    mov dh, 18
+    call DrawText
+    mov bl, C_GOLD
+    mov si, OFFSET MsgHowE3
+    mov dh, 20
+    call DrawText
+    mov si, OFFSET MsgHowE4
+    mov dh, 21
+    call DrawText
+    mov si, OFFSET MsgHowE5
+    mov dh, 22
+    call DrawText
+    call WaitKeyMsg
+    POP_ALL
+    ret
+ShowHowCount ENDP
+
+; ----------------------------------------------------------
+; DrawHowMarks: dibuja las marcas del ejemplo de la segunda pagina:
+;   toro en verde (casilla 3), vaca en amarillo (farol de la 4 a la 2),
+;   X roja en las que no estan y los pejibayes del resultado
+;   Recibe: nada
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawHowMarks PROC
+    PUSH_ALL
+    mov cx, 20
+    mov dx, 20
+    mov si, C_GREEN
+    mov ax, HOW_X + 2 * HOW_STEP - 2
+    mov bx, HOW_SY - 2
+    call DrawFrame
+    mov bx, HOW_GY - 2
+    call DrawFrame
+    mov ax, HOW_X + 2 * HOW_STEP + 8
+    mov bx, HOW_SY + 18
+    mov cx, 1
+    mov dx, HOW_GY - HOW_SY - 21
+    call FillRect
+
+    mov cx, 20
+    mov dx, 20
+    mov si, C_CURSOR
+    mov ax, HOW_X + 3 * HOW_STEP - 2
+    mov bx, HOW_SY - 2
+    call DrawFrame
+    mov ax, HOW_X + HOW_STEP - 2
+    mov bx, HOW_GY - 2
+    call DrawFrame
+    mov ax, HOW_X + 3 * HOW_STEP + 8
+    mov bx, HOW_SY + 18
+    mov cx, 1
+    mov dx, 10
+    call FillRect
+    mov ax, HOW_X + HOW_STEP + 8
+    mov bx, HOW_SY + 27
+    mov cx, 2 * HOW_STEP + 1
+    mov dx, 1
+    call FillRect
+    mov cx, 1
+    mov dx, HOW_GY - HOW_SY - 30
+    call FillRect
+
+    mov si, C_RED
+    mov ax, HOW_X
+    mov bx, HOW_GY
+    call DrawCross
+    mov ax, HOW_X + 3 * HOW_STEP
+    call DrawCross
+
+    mov cx, SPRITE_W
+    mov dx, SPRITE_H
+    mov si, OFFSET SprCompleto
+    mov ax, 216
+    call DrawSprite
+    mov si, OFFSET SprParcial
+    mov ax, 236
+    call DrawSprite
+    POP_ALL
+    ret
+DrawHowMarks ENDP
+
+; ----------------------------------------------------------
+; DrawCross: dibuja una X de 16x16 encima de una ficha
+;   Recibe: AX = x, BX = y, SI = color
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DrawCross PROC
+    PUSH_ALL
+    mov di, 0
+    mov cx, 1
+    mov dx, 1
+cr_dot:
+    push ax
+    push bx
+    add ax, di
+    add bx, di
+    call FillRect
+    sub ax, di
+    add ax, 15
+    sub ax, di
+    call FillRect
+    pop bx
+    pop ax
+    inc di
+    cmp di, 16
+    jb cr_dot
+    POP_ALL
+    ret
+DrawCross ENDP
 
 ; ---------- Creditos ----------
 .DATA
@@ -441,7 +677,7 @@ ShowCredits PROC
     mov cx, 320
     mov dx, 200
     mov si, 0
-    call FillRect           ; pantalla en negro
+    call FillRect
 
     mov bl, C_GOLD
     mov si, OFFSET MsgCredTit
@@ -482,7 +718,7 @@ ShowCredits PROC
     mov cx, SPRITE_W
     mov dx, SPRITE_H
     mov bp, 2
-    call DrawSpriteScaled   ; perezoso feliz, el doble de grande
+    call DrawSpriteScaled
     call WaitKeyMsg
     pop bp
     POP_ALL
@@ -503,7 +739,7 @@ WaitKeyMsg PROC
     mov bl, C_CURSOR
     call DrawText
     mov ah, 00h
-    int 16h                 ; esperar la tecla
+    int 16h
     POP_ALL
     ret
 WaitKeyMsg ENDP
@@ -517,13 +753,14 @@ WaitKeyMsg ENDP
 StartGame PROC
     PUSH_ALL
     call NewGame
-    mov RevealPos, 0FFh     ; nada que destapar
-    mov PanelMood, 0        ; perezoso normal
+    mov RevealPos, 0FFh
+    mov PanelMood, 0
     mov TestMode, 0
+    mov TestSecret, 0
     mov WarnOn, 0
     mov PieceFrame, 0
     call GetTicks
-    mov HeadTick, ax        ; todos los relojes empiezan ahora
+    mov HeadTick, ax
     mov PanelTick, ax
     mov CursorTick, ax
     mov GameTick, ax

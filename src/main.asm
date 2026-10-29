@@ -25,19 +25,19 @@ start:
     mov ax, @data
     mov ds, ax
 
-    call SaveVideoMode      ; anotar como estaba la pantalla
+    call SaveVideoMode
     call SetGraphicsMode
     call LoadPalette
     call ShowIntro
     cmp al, 1
-    je exit_game            ; ESC en la presentacion
+    je exit_game
 
     call InitRandom
-    mov al, 0               ; empieza en facil; el menu lo cambia
+    mov al, 0
     call SetLevel
 
 menu_loop:
-    call RunMenu            ; AL = opcion elegida
+    call RunMenu
     cmp al, MENU_EXIT
     je exit_game
     cmp al, MENU_HELP
@@ -46,7 +46,7 @@ menu_loop:
     jmp menu_loop
 ml_cred:
     cmp al, MENU_CRED
-    jne new_game            ; la que queda es Jugar
+    jne new_game
     call ShowCredits
     jmp menu_loop
 
@@ -59,8 +59,9 @@ main_loop:
     call UpdatePanelSloth
     call UpdateReveal
     call UpdateFx
+    call UpdateSparks
     cmp GameState, 0
-    jne ml_key              ; partida terminada: sin cursor
+    jne ml_key
     call UpdateCursor
     call UpdateTimer
 ml_key:
@@ -68,19 +69,19 @@ ml_key:
     cmp al, ACT_NONE
     je main_loop
     cmp al, ACT_ESC
-    je menu_loop            ; ESC vuelve al menu
+    je menu_loop
     cmp GameState, 0
     je ml_play
     cmp al, ACT_ENTER
-    je new_game             ; partida terminada: ENTER juega otra
+    je new_game
     cmp al, ACT_TEST
-    jne main_loop           ; partida terminada: solo ENTER, ESC o H
+    jne main_loop
 ml_play:
     call GameKey
     jmp main_loop
 
 exit_game:
-    call RestoreVideoMode   ; dejar la pantalla como estaba
+    call RestoreVideoMode
     mov ah, 4Ch
     mov al, 0
     int 21h
@@ -94,15 +95,16 @@ exit_game:
 DrawGameScreen PROC
     PUSH_ALL
     mov FxMode, 0
-    call LoadPalette        ; quitar el efecto final de la partida anterior
+    mov SparkStep, 0
+    call LoadPalette
     mov ax, 0
     mov bx, 0
     mov cx, 320
     mov dx, 200
     mov si, 0
-    call FillRect           ; pantalla en negro
+    call FillRect
     mov al, Level
-    inc al                  ; nivel 0..2 se muestra como 1..3
+    inc al
     call DrawHeader
     mov cl, MaxTries
     mov ch, NumPos
@@ -140,16 +142,16 @@ GameKey PROC
     mov bl, C_WHITE
     cmp TestMode, 0
     je gk_warn
-    mov si, OFFSET MsgPrueba    ; en modo prueba se queda su mensaje
+    mov si, OFFSET MsgPrueba
     mov bl, C_GOLD
 gk_warn:
-    call DrawStatus         ; quitar el aviso de la barra
+    call DrawStatus
 gk_nowarn:
     mov CursorOn, 0
-    call DrawCursor         ; quitar el marco antes de cambiar algo
+    call DrawCursor
     pop ax
     mov bl, CurPos
-    mov bh, 0               ; BX = casilla elegida
+    mov bh, 0
 
     cmp al, ACT_LEFT
     je gk_left
@@ -173,42 +175,42 @@ gk_nowarn:
 
 gk_left:
     cmp CurPos, 0
-    je gk_done              ; ya esta en la primera
+    je gk_done
     dec CurPos
     jmp gk_done
 gk_right:
     inc bl
     cmp bl, NumPos
-    jae gk_done             ; ya esta en la ultima
+    jae gk_done
     mov CurPos, bl
     jmp gk_done
 gk_up:
     mov al, Guess[bx]
-    inc al                  ; siguiente ficha
+    inc al
     cmp al, NumColors
     jbe gk_set
-    mov al, 1               ; despues de la ultima vuelve a la 1
+    mov al, 1
     jmp gk_set
 gk_down:
     mov al, Guess[bx]
-    dec al                  ; ficha anterior
+    dec al
     cmp al, 1
     jge gk_set
-    mov al, NumColors       ; antes de la 1 (o vacia) va la ultima
+    mov al, NumColors
 gk_set:
     mov Guess[bx], al
     mov al, ActiveRow
     mov ah, CurPos
-    call DrawActiveSlot     ; se queda en la misma casilla
+    call DrawActiveSlot
     jmp gk_done
 gk_number:
     cmp ah, NumColors
-    ja gk_done              ; esa ficha no existe en este nivel
+    ja gk_done
     mov Guess[bx], ah
     mov al, ActiveRow
     mov ah, CurPos
     call DrawActiveSlot
-    jmp gk_right            ; pasar a la siguiente casilla
+    jmp gk_right
 gk_back:
     mov Guess[bx], 0
     mov al, ActiveRow
@@ -218,35 +220,36 @@ gk_back:
 gk_test:
     cmp TryNum, 0
     je gk_tstart
-    call NewGame            ; ya se jugo: empezar de cero
-    mov RevealPos, 0FFh     ; cortar el destape si venia corriendo
+    call NewGame
+    mov RevealPos, 0FFh
     mov PanelMood, 0
     call DrawGameScreen
 gk_tstart:
     call GetTicks
     mov GameTick, ax
     mov TestMode, 1
+    mov TestSecret, 0
     mov WarnOn, 0
     mov si, OFFSET MsgPrueba
     mov bl, C_GOLD
     call DrawStatus
     jmp gk_done
 gk_view:
-    cmp TestMode, 0
-    jne gk_done             ; todavia se esta escribiendo el secreto
+    cmp TestSecret, 0
+    je gk_done
     cmp SecretShown, 0
     je gk_vshow
-    call DrawSecretBoxes    ; se veia: taparlo con "?"
+    call DrawSecretBoxes
     jmp gk_done
 gk_vshow:
-    call DrawSecret         ; estaba tapado: mostrarlo
+    call DrawSecret
     jmp gk_done
 gk_enter:
     cmp TestMode, 0
     je gk_submit
     call SaveTestSecret
     cmp al, 0
-    je gk_missing           ; faltan fichas en el secreto
+    je gk_missing
     jmp gk_done
 gk_submit:
     call SubmitGuess
@@ -256,12 +259,13 @@ gk_missing:
     mov WarnOn, 1
     mov si, OFFSET MsgFaltan
     mov bl, C_RED
-    call DrawStatus         ; no gasta turno, solo avisa
+    call DrawStatus
     jmp gk_done
 gk_scored:
     mov al, TryNum
-    dec al                  ; el intento que se acaba de guardar
+    dec al
     call DrawTry
+    call StartSparks
     cmp GameState, 0
     jne gk_over
 
@@ -281,7 +285,7 @@ gk_clear:
     jmp gk_done
 
 gk_over:
-    mov RevealPos, 0        ; destapar el secreto ficha por ficha
+    mov RevealPos, 0
     call GetTicks
     mov RevealTick, ax
     mov si, OFFSET MsgGano
@@ -293,13 +297,13 @@ gk_over:
 gk_show:
     call DrawStatus
     POP_ALL
-    ret                     ; sin marco: la partida termino
+    ret
 
 gk_done:
     mov CursorOn, 1
     call DrawCursor
     call GetTicks
-    mov CursorTick, ax      ; que el marco se quede visible un rato
+    mov CursorTick, ax
     POP_ALL
     ret
 GameKey ENDP
@@ -314,7 +318,7 @@ SaveTestSecret PROC
     push bx
     push cx
     push si
-    mov cl, NumPos          ; modo prueba: la fila es el secreto
+    mov cl, NumPos
     mov ch, 0
     mov si, 0
 st_check:
@@ -331,11 +335,12 @@ st_copy:
     inc si
     loop st_copy
     mov TestMode, 0
-    call DrawSecretBoxes    ; el secreto queda tapado; V lo muestra
+    mov TestSecret, 1
+    call DrawSecretBoxes
     mov al, ActiveRow
     call DrawActiveRow
     call GetTicks
-    mov GameTick, ax        ; el reloj empieza de nuevo
+    mov GameTick, ax
     mov WarnOn, 1
     mov si, OFFSET MsgPruebaOk
     mov bl, C_GOLD

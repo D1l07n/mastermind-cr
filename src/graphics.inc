@@ -14,8 +14,8 @@ SCREEN_W    EQU 320         ; puntos por fila
 ;   Toca: AX
 ; ----------------------------------------------------------
 SetGraphicsMode PROC
-    mov ax, 0013h           ; AH = 00h (cambiar modo), AL = 13h (modo grafico)
-    int 10h                 ; llamar al BIOS de video
+    mov ax, 0013h
+    int 10h
     ret
 SetGraphicsMode ENDP
 
@@ -24,7 +24,7 @@ SetGraphicsMode ENDP
 ;   Devuelve: OldVideoMode
 ;   Toca: AX, BX
 SaveVideoMode PROC
-    mov ah, 0Fh             ; BIOS: que modo hay? -> AL
+    mov ah, 0Fh
     int 10h
     mov OldVideoMode, al
     ret
@@ -42,38 +42,68 @@ RestoreVideoMode PROC
 RestoreVideoMode ENDP
 
 ; ----------------------------------------------------------
-; LoadPalette: le manda a la tarjeta de video los colores
-; de nuestros sprites (la tabla SpritePalette de sprites.inc)
+; LoadPalette: pone los colores de los sprites y de las pantallas
+;   con toda la luz
 ;   Recibe: nada (usa SpritePalette y UiPalette)
 ;   Devuelve: nada
-;   Toca: AX, CX, DX, SI
+;   Toca: nada
 ; ----------------------------------------------------------
 LoadPalette PROC
-    mov dx, 3C8h            ; puerto: "voy a cambiar colores desde el..."
-    mov al, PALETTE_START   ; ...color 16
-    out dx, al
-    mov dx, 3C9h            ; puerto: "aqui van rojo, verde, azul"
-    mov si, OFFSET SpritePalette
-    mov cx, PALETTE_COUNT * 3   ; 3 numeros por color
-lp_next:
-    mov al, [si]            ; leer un numero de la tabla
-    out dx, al              ; mandarlo a la tarjeta
-    inc si
-    loop lp_next
-
-    mov dx, 3C8h            ; ahora los colores fijos de las pantallas
-    mov al, UI_START
-    out dx, al
-    mov dx, 3C9h
-    mov si, OFFSET UiPalette
-    mov cx, UI_COUNT * 3
-lp_ui:
-    mov al, [si]
-    out dx, al
-    inc si
-    loop lp_ui
+    push bx
+    mov bl, 16
+    call PaletteLight
+    pop bx
     ret
 LoadPalette ENDP
+
+; ----------------------------------------------------------
+; PaletteLight: pone toda la paleta (sprites y pantallas) con cierta luz
+;   Recibe: BL = luz (16 = toda, 8 = la mitad, 0 = todo negro)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+PaletteLight PROC
+    PUSH_ALL
+    mov si, OFFSET SpritePalette
+    mov al, PALETTE_START
+    mov cx, PALETTE_COUNT
+    call DarkColors
+    mov si, OFFSET UiPalette
+    mov al, UI_START
+    mov cx, UI_COUNT
+    call DarkColors
+    POP_ALL
+    ret
+PaletteLight ENDP
+
+; ----------------------------------------------------------
+; DarkColors: manda a la tarjeta una tabla de colores con menos luz
+;   Recibe: SI = tabla (rojo, verde, azul), AL = primer color,
+;           CX = cuantos colores, BL = luz (16 = toda, 8 = la mitad)
+;   Devuelve: nada
+;   Toca: nada (guarda y restaura todo)
+; ----------------------------------------------------------
+DarkColors PROC
+    PUSH_ALL
+    mov dx, 3C8h
+    out dx, al
+    mov dx, 3C9h
+    mov ax, cx
+    shl cx, 1
+    add cx, ax
+dc_next:
+    mov al, [si]
+    mul bl
+    shr ax, 1
+    shr ax, 1
+    shr ax, 1
+    shr ax, 1
+    out dx, al
+    inc si
+    loop dc_next
+    POP_ALL
+    ret
+DarkColors ENDP
 
 ; ----------------------------------------------------------
 ; SetColor: cambia un solo color de la paleta
@@ -84,7 +114,7 @@ LoadPalette ENDP
 SetColor PROC
     PUSH_ALL
     mov dx, 3C8h
-    out dx, al              ; que color se va a cambiar
+    out dx, al
     mov dx, 3C9h
     mov cx, 3
 co_rgb:
@@ -108,32 +138,32 @@ DrawSprite PROC
     PUSH_ALL
     push es
 
-    push dx                 ; MUL borra DX: guardar el alto
-    mov di, ax              ; DI = x
+    push dx
+    mov di, ax
     mov ax, bx
     mov bx, SCREEN_W
-    mul bx                  ; AX = y * 320
-    add di, ax              ; DI = y * 320 + x
-    pop dx                  ; DX = alto otra vez
+    mul bx
+    add di, ax
+    pop dx
 
     mov ax, VIDEO_SEG
-    mov es, ax              ; ES apunta a la pantalla
-    mov bx, cx              ; BX = ancho (CX se gasta en cada fila)
+    mov es, ax
+    mov bx, cx
 
 ds_row:
-    mov cx, bx              ; puntos por fila
+    mov cx, bx
 ds_pixel:
     mov al, [si]
     cmp al, 0
-    je ds_skip              ; 0 = transparente
+    je ds_skip
     mov es:[di], al
 ds_skip:
     inc si
     inc di
     loop ds_pixel
 
-    add di, SCREEN_W        ; bajar una fila...
-    sub di, bx              ; ...y volver al inicio del sprite
+    add di, SCREEN_W
+    sub di, bx
     dec dx
     jnz ds_row
 
@@ -157,14 +187,14 @@ DrawSpriteBg PROC
     mov ax, bx
     mov bx, SCREEN_W
     mul bx
-    add di, ax              ; DI = y * 320 + x
+    add di, ax
     pop dx
 
     mov ax, VIDEO_SEG
     mov es, ax
     mov bx, cx
     mov ax, bp
-    mov ah, al              ; AH = color de fondo
+    mov ah, al
 
 db_row:
     mov cx, bx
@@ -172,7 +202,7 @@ db_pixel:
     mov al, [si]
     cmp al, 0
     jne db_put
-    mov al, ah              ; transparente: va el fondo
+    mov al, ah
 db_put:
     mov es:[di], al
     inc si
@@ -198,23 +228,23 @@ DrawSpriteBg ENDP
 DrawSpriteScaled PROC
     PUSH_ALL
     push es
-    cld                     ; STOSB avanza hacia adelante
+    cld
 
     push dx
     mov di, ax
     mov ax, bx
     mov bx, SCREEN_W
     mul bx
-    add di, ax              ; DI = y * 320 + x
+    add di, ax
     pop dx
 
     mov ax, VIDEO_SEG
     mov es, ax
-    mov bx, cx              ; BX = ancho del dibujo
+    mov bx, cx
 
 ss_row:
     push dx
-    mov dx, bp              ; cada fila del dibujo se repite BP veces
+    mov dx, bp
 ss_repeat:
     push si
     push di
@@ -223,7 +253,7 @@ ss_pixel:
     mov al, [si]
     push cx
     mov cx, bp
-    rep stosb               ; pintar BP puntos seguidos del mismo color
+    rep stosb
     pop cx
     inc si
     loop ss_pixel
@@ -232,7 +262,7 @@ ss_pixel:
     add di, SCREEN_W
     dec dx
     jnz ss_repeat
-    add si, bx              ; siguiente fila del dibujo
+    add si, bx
     pop dx
     dec dx
     jnz ss_row
@@ -253,25 +283,25 @@ FillRect PROC
     PUSH_ALL
     push es
 
-    push dx                 ; MUL borra DX: guardar el alto
+    push dx
     mov di, ax
     mov ax, bx
     mov bx, SCREEN_W
     mul bx
-    add di, ax              ; DI = y * 320 + x
+    add di, ax
     pop dx
 
     mov ax, VIDEO_SEG
     mov es, ax
-    mov bx, cx              ; BX = ancho
-    mov ax, si              ; AL = color
-    cld                     ; que STOSB avance hacia adelante
+    mov bx, cx
+    mov ax, si
+    cld
 
 fr_row:
     mov cx, bx
-    rep stosb               ; pintar CX puntos seguidos con AL
+    rep stosb
     add di, SCREEN_W
-    sub di, bx              ; inicio de la siguiente fila
+    sub di, bx
     dec dx
     jnz fr_row
 
@@ -290,14 +320,14 @@ FillRect ENDP
 ; ----------------------------------------------------------
 DrawText PROC
     PUSH_ALL
-    mov ah, 02h             ; poner el cursor en DH, DL
+    mov ah, 02h
     mov bh, 0
     int 10h
 dt_next:
     mov al, [si]
     cmp al, 0
-    je dt_end               ; 0 = fin de la frase
-    mov ah, 0Eh             ; escribir AL con color BL y avanzar
+    je dt_end
+    mov ah, 0Eh
     int 10h
     inc si
     jmp dt_next
@@ -314,25 +344,25 @@ DrawText ENDP
 ; ----------------------------------------------------------
 DrawNumber PROC
     PUSH_ALL
-    mov cl, al              ; guardar el numero
+    mov cl, al
     mov ah, 02h
     mov bh, 0
     int 10h
     mov al, cl
     mov ah, 0
     mov cl, 10
-    div cl                  ; AL = decenas, AH = unidades
-    mov ch, ah              ; guardar las unidades
+    div cl
+    mov ch, ah
     cmp al, 0
-    je dn_units             ; sin decenas: solo una cifra
+    je dn_units
     add al, '0'
     mov ah, 0Eh
-    int 10h                 ; decenas
+    int 10h
 dn_units:
     mov al, ch
     add al, '0'
     mov ah, 0Eh
-    int 10h                 ; unidades
+    int 10h
     POP_ALL
     ret
 DrawNumber ENDP
@@ -345,22 +375,19 @@ DrawNumber ENDP
 ; ----------------------------------------------------------
 DrawTwoDigits PROC
     PUSH_ALL
-    mov cl, al
+    cmp al, 10
+    jae dt_num
+    push ax
     mov ah, 02h
     mov bh, 0
     int 10h
-    mov al, cl
-    mov ah, 0
-    mov cl, 10
-    div cl                  ; AL = decenas, AH = unidades
-    mov ch, ah
-    add al, '0'
+    mov al, '0'
     mov ah, 0Eh
     int 10h
-    mov al, ch
-    add al, '0'
-    mov ah, 0Eh
-    int 10h
+    pop ax
+    inc dl
+dt_num:
+    call DrawNumber
     POP_ALL
     ret
 DrawTwoDigits ENDP

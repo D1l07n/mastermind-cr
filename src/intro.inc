@@ -37,35 +37,35 @@ ShowIntro PROC
     push si
     push di
     mov bl, 0
-    call PaletteLight       ; todo negro mientras se arma la escena
+    call PaletteLight
     call DrawIntroScene
-    call SaveScreen         ; guardar la escena para destaparla despues
+    call SaveScreen
     call DrawCurtain
-    call LoadPalette        ; ahora si se ve el telon cerrado
+    call LoadPalette
     mov cx, INTRO_WAIT
     call WaitTicks
 
-    mov di, SCREEN_W / 2    ; DI = ancho de cada mitad del telon
+    mov di, SCREEN_W / 2
 in_open:
     sub di, CURTAIN_STEP
     mov ax, di
     mov bx, 0
     mov cx, CURTAIN_STEP
     mov dx, 200
-    call RestoreStrip       ; destapar una franja a la izquierda
+    call RestoreStrip
     mov ax, SCREEN_W - CURTAIN_STEP
     sub ax, di
-    call RestoreStrip       ; y otra a la derecha
+    call RestoreStrip
     mov bx, 0
     mov cx, 1
     mov dx, 200
     mov si, C_CURT_DK
     mov ax, di
     dec ax
-    call FillRect           ; borde de la mitad izquierda
+    call FillRect
     mov ax, SCREEN_W
     sub ax, di
-    call FillRect           ; borde de la mitad derecha
+    call FillRect
     cmp di, DRAPE_W
     je in_open_end
     mov cx, CURTAIN_T
@@ -76,19 +76,19 @@ in_open_end:
     call GetTicks
     mov IntroTick, ax
     sub ax, PRESS_T
-    mov PressTick, ax       ; que el texto salga de una vez
+    mov PressTick, ax
 in_loop:
     call UpdateIntroSloth
     call UpdatePress
     mov ah, 01h
-    int 16h                 ; hay tecla?
+    int 16h
     jz in_loop
     mov ah, 00h
-    int 16h                 ; leerla
+    int 16h
     mov bl, 0
     cmp al, 27
     jne in_end
-    mov bl, 1               ; ESC
+    mov bl, 1
 in_end:
     mov al, bl
     pop di
@@ -112,7 +112,7 @@ DrawCurtain PROC
     mov bx, 0
     mov cx, FOLD_W
     mov dx, 200
-    mov di, 0               ; DI = parte del pliegue (0 a 3)
+    mov di, 0
 tl_fold:
     mov si, C_CURT_LT
     cmp di, 0
@@ -120,7 +120,7 @@ tl_fold:
     mov si, C_CURT_DK
     cmp di, 2
     je tl_draw
-    mov si, C_CURT          ; claro, medio, oscuro, medio
+    mov si, C_CURT
 tl_draw:
     call FillRect
     add ax, FOLD_W
@@ -133,7 +133,7 @@ tl_draw:
     mov cx, SCREEN_W
     mov dx, 6
     mov si, C_GOLD
-    call FillRect           ; banda dorada de arriba
+    call FillRect
     mov bx, 192
     mov dx, 8
     mov cx, 2
@@ -143,7 +143,7 @@ tl_fringe:
     jz tl_tassel
     mov si, C_CURT_DK
 tl_tassel:
-    call FillRect           ; fleco dorado: hilos de 2 puntos
+    call FillRect
     add ax, 2
     cmp ax, SCREEN_W
     jb tl_fringe
@@ -153,7 +153,7 @@ tl_tassel:
     mov cx, 2
     mov dx, 200
     mov si, C_CURT_DK
-    call FillRect           ; la union de las dos mitades
+    call FillRect
     POP_ALL
     ret
 DrawCurtain ENDP
@@ -167,16 +167,16 @@ DrawCurtain ENDP
 ; ----------------------------------------------------------
 TieCurtain PROC
     PUSH_ALL
-    mov di, 0               ; DI = fila del angostamiento (0 a PINCH_ROWS-1)
+    mov di, 0
 tc_row:
     mov cx, di
     shr cx, 1
-    shr cx, 1               ; CX = puntos que se quitan: 1 cada 4 filas
+    shr cx, 1
     mov bx, CORD_Y - PINCH_ROWS
-    add bx, di              ; fila de arriba del cordon
+    add bx, di
     call PinchRow
     mov bx, CORD_Y + PINCH_ROWS - 1
-    sub bx, di              ; la misma de abajo
+    sub bx, di
     call PinchRow
     inc di
     cmp di, PINCH_ROWS
@@ -187,16 +187,16 @@ tc_row:
     mov bx, CORD_Y - 2
     mov cx, DRAPE_W - PINCH_ROWS / 4 + 3
     mov dx, 4
-    call FillRect           ; cordon izquierdo
+    call FillRect
     mov ax, SCREEN_W - DRAPE_W + PINCH_ROWS / 4 - 3
-    call FillRect           ; cordon derecho
+    call FillRect
     mov ax, DRAPE_W - PINCH_ROWS / 4
     mov bx, CORD_Y + 2
     mov cx, 4
     mov dx, 8
-    call FillRect           ; borla izquierda
+    call FillRect
     mov ax, SCREEN_W - DRAPE_W + PINCH_ROWS / 4 - 4
-    call FillRect           ; borla derecha
+    call FillRect
     POP_ALL
     ret
 TieCurtain ENDP
@@ -215,21 +215,21 @@ PinchRow PROC
     je pn_edge
     mov ax, DRAPE_W
     sub ax, cx
-    call RestoreStrip       ; lado izquierdo
+    call RestoreStrip
     mov ax, SCREEN_W - DRAPE_W
-    call RestoreStrip       ; lado derecho
+    call RestoreStrip
 pn_edge:
     mov si, C_CURT_DK
     mov ax, DRAPE_W - 1
     sub ax, cx
     push cx
     mov cx, 1
-    call FillRect           ; borde izquierdo
+    call FillRect
     pop cx
     mov ax, SCREEN_W - DRAPE_W
     add ax, cx
     mov cx, 1
-    call FillRect           ; borde derecho
+    call FillRect
     POP_ALL
     ret
 PinchRow ENDP
@@ -249,9 +249,9 @@ SaveScreen PROC
     mov es, ax
     mov di, OFFSET IntroBuf
     mov ax, VIDEO_SEG
-    mov ds, ax              ; ojo: aqui DS ya no apunta a las variables
+    mov ds, ax
     mov si, 0
-    mov cx, 32000           ; 64000 bytes = 32000 palabras
+    mov cx, 32000
     rep movsw
     pop es
     pop ds
@@ -270,25 +270,25 @@ RestoreStrip PROC
     push ds
     push es
     cld
-    push dx                 ; MUL borra DX: guardar el alto
+    push dx
     mov di, ax
     mov ax, bx
     mov bx, SCREEN_W
     mul bx
-    add di, ax              ; DI = y * 320 + x
+    add di, ax
     pop dx
-    mov bx, cx              ; BX = ancho
+    mov bx, cx
     mov si, OFFSET IntroBuf
     add si, di
     mov ax, VIDEO_SEG
     mov es, ax
     mov ax, SEG IntroBuf
-    mov ds, ax              ; ojo: aqui DS ya no apunta a las variables
+    mov ds, ax
 rs_row:
     push si
     push di
     mov cx, bx
-    rep movsb               ; copiar una fila de la franja
+    rep movsb
     pop di
     pop si
     add si, SCREEN_W
@@ -314,7 +314,7 @@ DrawIntroScene PROC
     mov cx, SCREEN_W
     mov dx, 200
     mov si, 0
-    call FillRect           ; fondo negro
+    call FillRect
     mov si, OFFSET MsgMaster
     mov dh, 3
     mov dl, 15
@@ -326,7 +326,7 @@ DrawIntroScene PROC
     mov dl, 15
     mov cx, 9
 sn_pura:
-    mov bl, [di]            ; cada letra con un color de la bandera
+    mov bl, [di]
     call DrawText
     add si, 2
     inc dl
@@ -375,7 +375,7 @@ DrawStage PROC
     mov cx, SCREEN_W
     mov dx, 200 - STAGE_Y
     mov si, C_WOOD
-    call FillRect           ; tablas
+    call FillRect
 
     mov di, OFFSET SpotHalf
     mov bx, SPOT_Y
@@ -383,11 +383,11 @@ DrawStage PROC
     mov si, C_STAGE_LT
 st_spot:
     mov cl, [di]
-    mov ch, 0               ; CX = medio ancho de esta fila
+    mov ch, 0
     mov ax, SCREEN_W / 2
     sub ax, cx
     shl cx, 1
-    call FillRect           ; una fila del ovalo
+    call FillRect
     inc di
     inc bx
     cmp bx, SPOT_Y + SPOT_ROWS
@@ -398,7 +398,7 @@ st_spot:
     mov cx, SCREEN_W
     mov si, C_WOOD_DK
 st_plank:
-    call FillRect           ; raya entre tabla y tabla
+    call FillRect
     add bx, 8
     cmp bx, 200
     jb st_plank
@@ -435,27 +435,10 @@ DrawIntroSloth ENDP
 ; ----------------------------------------------------------
 UpdateIntroSloth PROC
     PUSH_ALL
-    call GetTicks
-    mov bx, ax
-    sub ax, IntroTick
-    mov dl, IntroFrame
-    mov dh, 0
-    mov di, dx
-    shl di, 1
-    shl di, 1               ; DI = paso * 4 (cada paso son 2 palabras)
-    cmp ax, SlothSeq[di+2]  ; ya duro lo que le toca?
-    jb is_end
-    mov IntroTick, bx
-    inc dl
-    cmp dl, SLOTH_STEPS
-    jb is_next
-    mov dl, 0               ; vuelve a empezar
-is_next:
-    mov IntroFrame, dl
-    mov di, dx
-    shl di, 1
-    shl di, 1
-    mov si, SlothSeq[di]
+    mov bx, OFFSET IntroFrame
+    mov di, OFFSET IntroTick
+    call NextSlothFace
+    jnc is_end
     call DrawIntroSloth
 is_end:
     POP_ALL
@@ -484,7 +467,7 @@ UpdatePress PROC
 pr_draw:
     mov dh, 20
     mov dl, 11
-    mov bl, C_CURSOR        ; amarillo
+    mov bl, C_CURSOR
     call DrawText
 pr_end:
     POP_ALL
@@ -500,7 +483,7 @@ UpdatePress ENDP
 WaitTicks PROC
     PUSH_ALL
     call GetTicks
-    mov bx, ax              ; BX = tic de inicio
+    mov bx, ax
 wt_loop:
     call GetTicks
     sub ax, bx

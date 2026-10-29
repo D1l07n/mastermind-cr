@@ -72,13 +72,14 @@ ScoreGuess ENDP
 
 ; ---------- Niveles ----------
 .DATA
-Level       DB 0                
-NumColors   DB 6               
-AllowRepeat DB 0              
-MaxTries    DB 12               
-LevelTable  DB 4, 6, 0, 12      
-            DB 4, 6, 1, 10      
-            DB 5, 8, 1, 10      
+Level       DB 0                ; 0 = facil, 1 = normal, 2 = dificil
+NumColors   DB 6                ; colores que se pueden usar
+AllowRepeat DB 0                ; 0 = no se repiten, 1 = si
+MaxTries    DB 12               ; intentos que tiene el jugador
+; por nivel: posiciones, colores, repeticion, intentos
+LevelTable  DB 4, 6, 0, 12      ; facil
+            DB 4, 6, 1, 10      ; normal
+            DB 5, 8, 1, 10      ; dificil
 
 .CODE
 ; ----------------------------------------------------------
@@ -92,7 +93,7 @@ SetLevel PROC
     mov Level, al
     mov ah, 0
     mov bx, ax
-    shl bx, 1                   
+    shl bx, 1
     shl bx, 1
     mov al, LevelTable[bx]
     mov NumPos, al
@@ -108,8 +109,8 @@ SetLevel ENDP
 
 ; ---------- Secreto al azar ----------
 .DATA
-Seed        DW 0                
-PrevSecret  DB MAX_POS DUP(0)    
+Seed        DW 0                ; numero que cambia cada vez que se pide uno al azar
+PrevSecret  DB MAX_POS DUP(0)    ; secreto de la partida anterior
 
 .CODE
 ; ----------------------------------------------------------
@@ -121,7 +122,7 @@ PrevSecret  DB MAX_POS DUP(0)
 InitRandom PROC
     PUSH_ALL
     mov ah, 00h
-    int 1Ah                   
+    int 1Ah
     mov Seed, dx
     POP_ALL
     ret
@@ -135,16 +136,16 @@ InitRandom ENDP
 ; ----------------------------------------------------------
 Random PROC
     push dx
-    mov ax, Seed                
+    mov ax, Seed
     mov dx, 25173
     mul dx
     add ax, 13849
     mov Seed, ax
-    mov al, ah                 
-    mov ah, 0
-    div NumColors               
     mov al, ah
-    inc al                     
+    mov ah, 0
+    div NumColors
+    mov al, ah
+    inc al
     pop dx
     ret
 Random ENDP
@@ -159,19 +160,19 @@ Random ENDP
 MakeSecret PROC
     PUSH_ALL
     mov cl, NumPos
-    mov ch, 0                   
+    mov ch, 0
 ms_start:
-    mov si, 0                  
+    mov si, 0
 ms_next:
-    call Random                
+    call Random
     cmp AllowRepeat, 1
-    je ms_store                 
-    mov bx, 0                   
+    je ms_store
+    mov bx, 0
 ms_check:
     cmp bx, si
-    jae ms_store               
+    jae ms_store
     cmp Secret[bx], al
-    je ms_next                  
+    je ms_next
     inc bx
     jmp ms_check
 ms_store:
@@ -180,17 +181,17 @@ ms_store:
     cmp si, cx
     jb ms_next
 
-    mov bx, 0                   
+    mov bx, 0
 ms_same:
     mov al, Secret[bx]
     cmp al, PrevSecret[bx]
-    jne ms_save                 
+    jne ms_save
     inc bx
     cmp bx, cx
     jb ms_same
-    jmp ms_start          
+    jmp ms_start
 ms_save:
-    mov bx, 0                  
+    mov bx, 0
 ms_copy:
     mov al, Secret[bx]
     mov PrevSecret[bx], al
@@ -201,15 +202,15 @@ ms_copy:
     ret
 MakeSecret ENDP
 
-
-MAX_TRIES   EQU 12              
+; ---------- Partida: intentos, historial, ganar o perder ----------
+MAX_TRIES   EQU 12              ; el nivel facil da 12 intentos
 
 .DATA
 TryNum      DB 0                ; intentos ya gastados
 GameState   DB 0                ; 0 = jugando, 1 = gano, 2 = perdio
-HistGuess   DB MAX_TRIES * MAX_POS DUP(0)   
-HistBulls   DB MAX_TRIES DUP(0)             
-HistCows    DB MAX_TRIES DUP(0)            
+HistGuess   DB MAX_TRIES * MAX_POS DUP(0)   ; cada intento, en orden
+HistBulls   DB MAX_TRIES DUP(0)             ; toros de cada intento
+HistCows    DB MAX_TRIES DUP(0)             ; vacas de cada intento
 
 .CODE
 ; ----------------------------------------------------------
@@ -248,7 +249,7 @@ SubmitGuess PROC
     push si
     push di
 
-    mov cl, NumPos              
+    mov cl, NumPos
     mov ch, 0
     mov si, 0
 sub_check:
@@ -257,18 +258,18 @@ sub_check:
     inc si
     loop sub_check
 
-    call ScoreGuess             
+    call ScoreGuess
 
-    mov al, TryNum            
+    mov al, TryNum
     mov ah, 0
-    mov di, ax                  
+    mov di, ax
     mov bl, Bulls
     mov HistBulls[di], bl
     mov bl, Cows
     mov HistCows[di], bl
     mov bl, MAX_POS
-    mul bl                      
-    mov di, ax                 
+    mul bl
+    mov di, ax
     mov cl, NumPos
     mov ch, 0
     mov si, 0
@@ -280,16 +281,16 @@ sub_copy:
     loop sub_copy
     inc TryNum
 
-    mov al, Bulls             
+    mov al, Bulls
     cmp al, NumPos
     jne sub_not_won
-    mov GameState, 1            
+    mov GameState, 1
     jmp sub_done
 sub_not_won:
     mov al, TryNum
     cmp al, MaxTries
     jb sub_done
-    mov GameState, 2           
+    mov GameState, 2
 sub_done:
     mov al, 1
     jmp sub_exit

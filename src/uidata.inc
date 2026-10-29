@@ -18,7 +18,7 @@ C_RED       EQU 207
 C_ACTIVE    EQU 208
 C_CURSOR    EQU 209
 C_SLOT      EQU 210
-C_SELECT    EQU 211
+C_GREEN     EQU 211         ; verde de los toros (instrucciones)
 C_FLAG_B    EQU 212         ; franjas: colores propios para poder parpadear
 C_FLAG_W    EQU 213
 C_FLAG_R    EQU 214
@@ -39,7 +39,7 @@ UiPalette   LABEL BYTE
             db 50,48,44         ; 208 fila activa
             db 63,63,16         ; 209 marco amarillo
             db 12,12,12         ; 210 cuadro de ficha
-            db 14,30,56         ; 211 ficha seleccionada
+            db 12,50,20         ; 211 verde
             db  8,20,56         ; 212 franja azul
             db 63,63,63         ; 213 franja blanca
             db 56,10,10         ; 214 franja roja
@@ -96,6 +96,17 @@ CursorOn    DB 0                ; 1 = marco amarillo visible
 CursorTick  DW 0                ; tic del ultimo parpadeo
 WarnOn      DB 0                ; 1 = la barra muestra un aviso
 TestMode    DB 0                ; 1 = se esta escribiendo el secreto a mano
+TestSecret  DB 0                ; 1 = el secreto lo puso H: solo asi sirve V
+SparkStep   DB 0                ; chispas del toro: 0 = nada, 1 a 3 = cuadro, 4 = borrar
+SparkRow    DB 0                ; intento que tiene las chispas
+SparkTick   DW 0
+
+; chispas: cuantas, y luego x, y de cada una (desde la esquina de la ficha)
+SparkF1     DB 2,  4, 3,  11, 9
+SparkF2     DB 4,  1, 2,  14, 2,  2, 11,  13, 11
+SparkF3     DB 6,  -1, 1,  16, 1,  -1, 12,  16, 12,  7, 0,  8, 13
+SparkFrames DW OFFSET SparkF1, OFFSET SparkF2, OFFSET SparkF3
+SparkColors DB C_WHITE, C_CURSOR, C_GOLD
 GameTick    DW 0                ; tic en que empezo la partida
 ShownSec    DW 0                ; segundo que muestra el reloj
 RevealPos   DB 0FFh             ; ficha del secreto que sigue (0FFh = nada)
