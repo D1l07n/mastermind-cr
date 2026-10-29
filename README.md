@@ -23,8 +23,8 @@ Christopher Chavarría Solórzano y Dylan Díaz Quintero.
 4. Darle **Run**. El IDE ensambla con TASM, enlaza con TLINK y abre el juego en DOSBox.
    Si solo se quiere ensamblar para ver errores: **Build** (Ctrl+Shift+B); el resultado sale en la terminal de abajo.
 
-Importante: se abre siempre `main.asm`, no los `.inc`. Los `.inc` (graphics, input, game, screens,
-macros, sprites, uidata) tienen que estar en la misma carpeta que `main.asm`.
+Importante: se abre siempre `main.asm`, no los `.inc`. Los `.inc` (macros, graphics, input, game,
+screens, intro, menu, uidata, sprites) tienen que estar en la misma carpeta que `main.asm`.
 
 ## Ensamblar y correr a mano en DOSBox
 
@@ -55,7 +55,14 @@ dosbox -conf dosbox.conf
 (Ejecutado desde dentro de `bin`.) La configuración monta esa carpeta y arranca `MAIN.EXE` sola.
 También se puede montar `bin` a mano y escribir `MAIN.EXE`.
 
-## Controles
+## Cómo se usa
+
+Al abrir sale la presentación (telón que se abre). Cualquier tecla pasa al menú; Esc sale.
+
+**Menú:** ↑ ↓ eligen la opción y Enter la acepta. En *Nivel*, Enter o ← → cambian entre Fácil, Normal y Difícil.
+*Instrucciones* tiene dos páginas: cómo se juega y cómo se cuentan los toros y las vacas.
+
+## Controles del juego
 
 | Tecla | Acción |
 |---|---|
@@ -63,10 +70,11 @@ También se puede montar `bin` a mano y escribir `MAIN.EXE`.
 | ↑ ↓ o W S | Cambiar la ficha de la casilla |
 | 1 a 8 | Poner esa ficha directamente |
 | Retroceso | Borrar la casilla |
-| Enter | Probar el intento |
+| Enter | Probar el intento (con la partida terminada: jugar otra) |
 | H | Modo prueba: escribir el secreto a mano y Enter |
-| V | Mostrar o tapar el secreto |
-| Esc | Salir |
+| V | Solo en modo prueba: mostrar o tapar el secreto |
+| Esc | Volver al menú |
 
 Pejibaye entero = ficha correcta en su lugar (toro). Pejibaye mordido = ficha correcta en otro lugar (vaca).
-Los pejibayes dicen cuántos aciertos hay, no en qué casilla.
+Los pejibayes dicen cuántos aciertos hay, no en qué casilla: primero salen los toros y después las vacas.
+En el nivel Fácil, la ficha que es toro suelta unas chispas como ayuda; en Normal y Difícil no.
